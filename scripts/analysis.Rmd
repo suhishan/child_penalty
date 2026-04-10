@@ -1,0 +1,199 @@
+
+```{r}
+library(tidyverse); library(cmdstanr);
+library(fixest)
+```
+
+
+Load the overall data for 2011.
+```{r}
+overall_df <- read_rds("transformed_data/overall_df_for_analysis.Rds")
+
+```
+
+## Aggregate data for Binomial Regression
+
+```{r}
+overall_df_agg <- aggregate(outcome_int ~ age + t + sex, overall_df, sum)
+
+overall_df_agg$N <- aggregate(count ~ age + t + sex, overall_df, sum)$count
+
+overall_df_agg$weights <- aggregate(
+    weights ~ age + t + sex, overall_df, sum
+)$weights
+
+```
+
+NOTE: Think about weights later.
+
+
+*Normal LPM (Non-aggregate)*
+
+*Empirical Means*
+
+```{r}
+summary <- overall_df |> group_by(t, sex) |> 
+    summarize(
+        mean = weighted.mean(outcome, weights)
+    )
+
+summary |> ggplot(aes(x = t, y = mean))+
+    geom_point()+
+    geom_line(aes(group = sex))+
+    theme_classic()
+```
+
+```{r}
+# Women
+d_f <- overall_df[overall_df$sex == 1,]
+d_f$t <- factor(d_f$t)
+d_f$t <- relevel(d_f$t, ref = "-2")
+
+# Men
+d_m <- overall_df[overall_df$sex == 2,]
+d_m$t <- factor(d_m$t)
+d_m$t <- relevel(d_m$t, ref = "-2")
+
+```
+
+## Women
+```{r}
+# Overall Model
+mf.1 <- feols(
+    outcome ~ t | factor(age) ,
+    weights = d_f$weights,
+    data = d_f,
+    vcov = 'hetero'
+)
+coefs.f1 <- coef(mf.1)
+coefs.f1 <- append(coefs.f1, 0, after = 3)
+se.f1 <- se(mf.1)
+se.f1 <- append(se.f1, 0, after = 3)
+
+# Model without the event time dummies
+mf.2 <- feols(
+    outcome ~ factor(age) ,
+    weights = d_f$weights,
+    data = d_f,
+    vcov = 'hetero'
+)
+
+d_f$predict.f2 <- predict(mf.2)
+denominator.f <- aggregate(predict.f2 ~ t, mean, data = d_f)$predict.f2
+
+estimates <- tibble(
+    t = seq(-5, 10, by = 1),
+    coefs.f1,
+    se.f1,
+    denominator.f,
+) |> mutate(penalty.f  = coefs.f1/denominator)
+```
+
+
+## Men
+
+```{r}
+mm.1 <- feols(
+    outcome ~ t | factor(age) ,
+    weights = d_m$weights,
+    data = d_m,
+    vcov = 'hetero'
+)
+coefs.m1 <- coef(mm.1)
+coefs.m1 <- append(coefs.m1, 0, after = 3)
+se.m1 <- se(mm.1)
+se.m1 <- append(se.m1, 0, after = 3)
+
+# Model without the event time dummies
+mm.2 <- feols(
+    outcome ~ factor(age) ,
+    weights = d_m$weights,
+    data = d_m,
+    vcov = 'hetero'
+)
+
+d_m$predict.m2 <- predict(mm.2)
+denominator.m <- aggregate(predict.m2 ~ t, mean, data = d_m)$predict.m2
+
+estimates <- estimates |> mutate(
+    coefs.m1,
+    se.m1,
+    denominator.m
+) |> mutate(
+    penalty.m = coefs.m1/denominator.m)
+
+```
+
+
+## The graph
+
+```{r}
+estimates |>
+    pivot_longer(cols = c('penalty.f', 'penalty.m')) |> 
+    mutate(sex = rep(c("Women", "Men"), times = 16)) |> 
+    ggplot(aes(x = t, y = value)) +
+    geom_point()+
+    geom_line(aes(color = sex))+
+    geom_vline(xintercept = -0.5, linetype = 2)+
+    coord_cartesian(ylim = c(1, -1))+
+    theme_classic()
+
+estimates |>
+    pivot_longer(cols = c('coefs.f1', 'coefs.m1')) |> 
+    mutate(sex = rep(c("Women", "Men"), times = 16)) |> 
+    ggplot(aes(x = t, y = value)) +
+    geom_point()+
+    geom_line(aes(color = sex))+
+    coord_cartesian(ylim = c(1, -1))+
+    theme_classic()+
+    geom_vline(xintercept = -0.5, linetype = 2)
+
+
+
+estimates |> 
+    mutate(coef_diff = coefs.f1 - coefs.m1) |> 
+    ggplot(aes(x = t, y = coef_diff)) +
+    geom_point()
+    
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+## Stan Model
+
+```{r}
+m1 <- cmdstan_model("scripts/event_study.stan")
+m1fit <- m1$sample(
+    data = d, chains = 4, parallel_chains = 4, 
+    refresh = 100
+)
+```
+
+
+Simple foels models
+
+```{r}
+feols(employed ~ i(age), data = overall_df)
+```

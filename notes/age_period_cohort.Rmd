@@ -1,0 +1,9 @@
+## Notes on the Paper by Julia Rohrer about Age, Periods, Cohorts.
+
+Age = Period - Cohort.
+
+Example, Age (25) = Period (2011) - Cohort (1986)
+
+*Differences associated with time* cannot be attributed to segregated effects of age, period and cohort because they are perfectly multi-colinear.
+
+In my example: we have to assume away cohort-effects on employment.

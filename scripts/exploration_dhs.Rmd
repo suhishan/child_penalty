@@ -1,0 +1,79 @@
+Extract the data:
+
+
+```{r}
+library(haven); library(tidyverse)
+ind_og <- read_dta("data/individual_2022.dta")
+men_og <- read_dta('data/men.dta')
+```
+
+Some renaming:
+
+```{r}
+d <- data.frame(
+    age = ind_og$v012,
+    no_living_children = with(ind_og, v202 + v203 + v204 + v205),
+    age_at_first_birth = ind_og$v212,
+    highest_education = ind_og$v106,
+    urbrur = ifelse(ind_og$v102 == 2, 0, 1), # 1 is urban
+    currently_working = ind_og$v714
+)
+
+m <- data.frame(
+    age = men_og$mv012,
+    age_at_first_birth = men_og$mv212,
+    currently_working = men_og$mv714
+)
+
+```
+
+
+A Crude summary stats way to see child penalty.
+
+```{r}
+# Only those who have had children
+women <- d |> filter(!is.na(age_at_first_birth)) |> 
+    mutate(years_since_first_child = age - age_at_first_birth) |> 
+    group_by(years_since_first_child) |> 
+    summarize(
+        cw_mean = mean(currently_working), 
+        count = n()
+    ) |> head(n = 11) |> mutate(sex = 'female')
+```
+
+
+For men
+
+```{r}
+men <- m |> filter(!is.na(age_at_first_birth)) |> 
+    mutate(years_since_first_child = age - age_at_first_birth) |> 
+    group_by(years_since_first_child) |> 
+    summarize(
+        cw_mean = mean(currently_working), 
+        count = n()
+    ) |> head(n = 11) |> mutate(sex = 'male')
+
+```
+
+Base R plot.
+
+
+```{r}
+rbind(women, men) |> as_tibble() |> 
+    ggplot(aes(x = factor(years_since_first_child), y = cw_mean))+
+    geom_point(aes(shape = sex), size = 2)+
+    geom_line(aes(group = sex))+
+    theme_classic()
+```
+
+
+```{r}
+plot(cw_mean ~ years_since_first_child, data = women, col = 'red', ylim = c(0, 1),
+xlab = "Year since the birth of the first child", ylab = "Proportion Currently Working")
+with(men ,points(cw_mean ~ years_since_first_child, col = 'blue'))
+with(women, lines(years_since_first_child, cw_mean))
+with(men, lines(years_since_first_child, cw_mean))
+legend("bottomright", legend = c('Women', 'Men'), col = c('red','blue'), lty = 1)
+```
+
+

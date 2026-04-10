@@ -1,0 +1,72 @@
+## Variables:
+
+
+
+
+## Note on variables and replication.
+
+### How are event times categorized in the Kleven Paper?
+
+"We define event time t = 0 to start 6 months before the birth of the first child and to end 5 months after. t = −1 begins 12 months before the start of t = 0 and so on until t = −5, t = 1 begins 12 months after the end of t = 0 and so on until t = 10."
+
+*It must be noted that Nepal's Census data does not have exact birth timings*
+
+### What variables are used for matching?
+
+A given parent with a first child aged 0 is matched to one childless person of the same gender, education level race (the race/ethnicity variable with Hispanic as a separate category), marital status, living in
+the same state who is one year younger and interviewed one year before. This gives us an observation at event time t = −1. We continue the same process, matching on the same demographics to someone who is two years younger and interviewed two years before to get an observation at t = −2 and so on for t = −3, t = −4, and t = −5.
+
+
+## Notes on causal identification and methodolofical uncertainities:
+
+*Who is being compared to whom*
+
+In an ideal scenario, we would see the life-cycle of an entire person from 5 years before their first birth to 10 years after. 
+
+In a scenario with yearly-interviews and repeated cross-section, a 25 year-old who just had her first child i.e. in the interview year t = 0, she would be matched with a childless 24 year-old at year t = -1, implying that this 19 year old's employment status would have been the 25-year-olds counterfactual. The matching would be based on age (has to be 24), place of residence, marital status, education status and race.
+
+However, suppose we only have cross-sectional data for e.g. the census. A 25 year-old who just had her first child in the interview-year t = 0 would be matched with a childless 24 year-old at t = 0 itself (matched on the basis of place of residence, education status and race). This would be our estimate for t = -1. This can still be believable because a year may not make much of a difference but what happens in the case of t = -5. Ideally we would have a childless 25-5 = 20 year old interviewed at t = -5 as the counterfactual. However, in the case of a census, the counterfactual would be at two levels: a) counterfactual person with similar charactersitics, b) counterfactual age. How so? Because we'd be comparing a person who is 20 at t = 0 and implying that she is 20 at t = -5. This could be problematic because a 20 year-old's job prospects and societal expectations may be radically different in t = -5 i.e. 5 years ago (the true counterfactual) versus now, where the cost of being childless is low and job prospects may be higher than what would've been for our 25 year-old, implying a biased counterfactual.
+
+**Does age fixed effect help with this?**
+
+If we have Y = b_f * age/year of birth + ..., does this capture the average effect of being let's say 20 on the probability of being employed, thereby implying that the counterfactual 20 year-old can indeed be assumed to be a chidless 20 year-old of 5 years ago in terms of other characteristics we matched on? 
+
+Suppose we are pooling two censuses 2001 and 2011, and if we have year of birth fixed effects, does this also capture the time-specific compound that I am talking about?
+
+
+*Reasoning from the Child Penalty Atlas Paper*
+For many countries, we do not have repeated cross-sections at an annual frequency. In this case, we create surrogate
+observations using individuals with age a − n and characteristics Xj = Xi , but who are observed in the same cross-section of the data. In practice, this assumes that any calendar-year shock on employment is not cohort-specific.
+
+In succinct, the age-employment profile is stable across cohorts.
+Example: suppose people born in 1989 enter the labor force at age 23, then our assumption assumes that people born in 1994 and 2004 also enter the labor force at age 23 on average i.e. age to employment relationship is stable across cohorts.
+
+
+
+*I have stumbled upon the age-period-cohort (APC) problem*
+
+
+## A problem even in ideal longitudinal studies:
+
+Suppose in an ideal longitudinal setting, a 25 year-old woman with a just born child is compared to a 20 year-old childless person interviewed 5 years ago. Now the age effect is canceled out because we are looking at same cohort people (and also with age fixed effects), but even in this ideal setting, there is still the period effect problem because the employment scenario, prevailing macroeconomy, etc. 5 years ago maybe different to what it is now. I saw psychology methods paper outlining this problem but are there any papers in Economics that outline this problem/criticize longtiduinal event studies?
+
+
+
+## A directory of all the problems:
+
+
+a. The age-period-cohort effect i.e. in our sample age-employment profile is assumed to not be cohort-dependent.
+b. We only have cross-sectional data.
+c. The matching algorithm was only able to match on ~7,000 distinct covariate groups instead of the upper bound of ~25,000 distinct covariate groups.
+
+
+
+
+# How to incorporate weights/ Frequentism and Bayesinism
+Look for:
+1. Abadie and Imbens matching estimator.
+2. Variable Ratio/ Many-to-many matching.
+
+Bayesian.
+1. Bayesian Matching/ Multiple imputation.
+2. Subclass multi-level regression

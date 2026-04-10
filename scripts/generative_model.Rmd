@@ -1,0 +1,50 @@
+```{r}
+library(tidyverse);
+library(rethinking)
+```
+
+
+```{r}
+# 35 ages
+# Women Time period = 1
+age <- seq(15, 49, by = 1)
+distance <- -abs(age - mean(age))/sd(age)
+dprob  <- inv_logit(distance)
+
+d <- data.frame(
+    ages = rep(seq(15, 49), each = 1000)
+) |> mutate(
+    ages_std = (ages - mean(ages))/sd(ages),
+    birthed = rbinom(length(ages), size = 1, prob = inv_logit(-1 + 1.5 * ages_std))
+)
+    
+
+d |> group_by(ages) |> summarize(mean(birthed)) |> print(n = 50)
+plot(age, inv_logit(-1 + 1.5 * standardize(age)), type = "l")
+
+```
+
+```{r}
+d$age_at_fc <- ifelse(d$birthed == 0, NA, sapply(d$ages,  function(x) {
+    if(x == 15) {
+        return(x)
+    } else {
+        return(
+            sample(age[age <= x], size = 1, replace = FALSE, prob = dprob[1:(x-15+1)])
+        )
+    }
+}))
+
+table(d$age_at_fc)
+
+```
+
+
+Diagnostics
+```{r}
+sample(age[age < 17], 1, TRUE, dprob[1:(17-15)])
+aggregate(fc, by = list(ages), FUN = mean)
+```
+
+
+
