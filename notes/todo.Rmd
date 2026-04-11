@@ -1,0 +1,21 @@
+*Plots to make*
+
+*When districts were used for matching*
+2001 Only data.
+[ ] Event Study plot for crude coefficients between men and women.
+[ ] Event Study plot for percentage penalty metrics between men and women.
+
+2011 Data.
+[ ] Event Study plot for crude coefficients between men and women.
+[ ] Event Study plot for percentage penalty metrics between men and women.
+
+Joint Data.
+[ ] Event Study plot for crude coefficients between men and women.
+[ ] Event Study plot for percentage penalty metrics between men and women.
+
+
+*When districts are not used for matching*
+
+Joint Data
+[ ] Event Study plot for crude coefficients between men and women.
+[ ] Event Study plot for percentage penalty metrics between men and women.

@@ -1,19 +1,13 @@
-
-```{r}
-library(tidyverse); library(MatchIt);
-#library(feols)
-```
+# Load required libraries
+library(tidyverse)
+library(MatchIt)
+# library(feols)
 
 ## Load the cleaned and trimmed down sample
-
-```{r}
 df_use <- read_rds("transformed_data/selected_f_ipums_use.Rds")
 df_use_m <- read_rds("transformed_data/selected_m_ipums_use.Rds")
-```
 
-*Have a variable on a) whether a person is childless and b) whether their eldest child was born in the interview year.
-
-```{r}
+# Have a variable on a) whether a person is childless and b) whether their eldest child was born in the interview year.
 df_use <- df_use |> mutate(
     childless = ifelse(is.na(age_eldch), 1, 0), # If a person is childless in the sample i.e. no own child in the household.
     child0 = ifelse(age_eldch == 0, 1, 0),
@@ -26,38 +20,30 @@ df_use_m <- df_use_m |> mutate(
     parent_id_m = row_number() # If a person had a child in the given year.
 )
 
-
-```
-
 ## Load only the 2011 sample and those with their eldest child <= 10 years old.
-```{r}
 df_use_11 <- df_use |> filter(year == 2011 & (is.na(age_eldch) | age_eldch <= 10))
 df_use_11_m <- df_use_m |> filter(year_m == 2011 & (is.na(age_eldch_m) | age_eldch_m <= 10)) # Men
-```
 
 # Matching:
+# Separate the datasets into year 0 parents and children.
 
-Separate the datasets into year 0 parents and children.
-```{r}
 # Women
 # This is the group of 2011 birthers that is the basis of comparison.
 parents0 <- df_use_11 |> filter(child0 == 1) |> mutate(parent0_id = row_number())
 # This is the group that will be used as counterfactuals for negative event times.
 childless <- df_use_11 |> filter(childless == 1) |> mutate(childless_id = row_number())
 
-
 # Men
 # This is the group of 2011 birthers men that is going to be the basis of our comparison.
 parents0_m <- df_use_11_m |> filter(child0_m == 1) |> mutate(parent0_id_m = row_number())
 # This is the group that will be used as counterfactuals for negative event times. 
 childless_m <- df_use_11_m |> filter(childless_m == 1) |> mutate(childless_id_m = row_number())
-```
 
-For the parent dataset, for every parent, have their timeline from -1 to -5
-
-```{r}
+# For the parent dataset, for every parent, have their timeline from -1 to -5
 event_times <- -5:-1
-match_parents <- parents0 |> slice(rep(1:n(), each = length(event_times))) |> group_by(parent0_id) |> 
+match_parents <- parents0 |> 
+  slice(rep(1:n(), each = length(event_times))) |> 
+  group_by(parent0_id) |> 
     mutate(
         t = event_times, 
         age_at_t = age - abs(t),
@@ -66,9 +52,10 @@ match_parents <- parents0 |> slice(rep(1:n(), each = length(event_times))) |> gr
 
 match_childless <- childless |> mutate(match_age = age, treatment = 0)
 
-
 # Men
-match_parents_m <- parents0_m |> slice(rep(1:n(), each = length(event_times))) |> group_by(parent0_id_m) |> 
+match_parents_m <- parents0_m |> 
+  slice(rep(1:n(), each = length(event_times))) |> 
+  group_by(parent0_id_m) |> 
     mutate(
         t_m = event_times, 
         age_at_t_m = age_m - abs(t_m),
@@ -76,11 +63,7 @@ match_parents_m <- parents0_m |> slice(rep(1:n(), each = length(event_times))) |
     ) |> mutate(match_age_m = age_at_t_m) |> ungroup()
 
 match_childless_m <- childless_m |> mutate(match_age_m = age_m, treatment_m = 0)
-```
 
-
-
-```{r}
 match_joined_df <- bind_rows(
     match_parents |> select(-age_at_t),
     match_childless
@@ -90,12 +73,8 @@ match_joined_df_m <- bind_rows(
     match_parents_m |> select(-age_at_t_m),
     match_childless_m
 ) |> filter(!is.na(edu_levels_m)) # BIG FLAG: Some people with NA EDUCATION removed.
-```
 
 ## Matching Algorithm
-
-```{r}
-
 m_exact <- matchit(
     treatment ~ match_age + br_ch + edu_levels + urban + district, # Urban/rural status compared to district matches a lot of variables.
     data = match_joined_df,
@@ -107,29 +86,14 @@ m_exact_m <- matchit(
     data = match_joined_df_m, method = "exact", normalize = FALSE
 )
 
-```
-
 ## Dataset from the matching algorithm
-```{r}
 matched_df <- match_data(m_exact) # Women
 matched_df_m <- match_data(m_exact_m) # Men
 
 write_rds(matched_df, "transformed_data/matched_df.Rds")
 write_rds(matched_df_m, "transformed_data/matched_df_m.Rds")
-```
-
-Who is being matched with whom?
-Out of the original,
-
-| Treatment  | Control
-| 74,515     | 128,178 | Original
-| 72,140     | 98,861  | Matched.
-
-i.e. For every parent_id0 in the treatment, we must match a person out of the control with event times t = -1,...,-5.
-There should have been : 34 * 2 * 72 * 5 = 24480 subclasses, instead we just have 7,151 subclasses.
 
 ## Negative Event times Control Group after matching.
-```{r}
 # Women
 control_neg <- matched_df[matched_df$treatment == 0,]
 treatment_0 <- matched_df[matched_df$treatment == 1,]
@@ -137,22 +101,14 @@ treatment_0 <- matched_df[matched_df$treatment == 1,]
 # Men
 control_neg_m <- matched_df_m[matched_df_m$treatment_m == 0,]
 treatment_0_m <- matched_df_m[matched_df_m$treatment_m == 1,]
-```
 
 ## Two Branching Paths:
-Run Matching if you want collapsed dataset. Run Matching 2 if you want long-form many-to-many dataset.
-
+# Run Matching Collapsed if you want a collapsed dataset. 
+# Run Matching Long if you want a long-form many-to-many dataset.
+# (Comment out the one you don't need for a given run)
 
 ### Matching Collapsed
-```{r}
-source('scripts/matching_collapsed.R')
-```
+source('scripts/matching_collapsed_2011.R')
 
 ### Matching Long
-
-```{r}
-source('scripts/matching_long.R')
-```
-
-
-
+# source('scripts/matching_long.R')
