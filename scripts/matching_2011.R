@@ -3,6 +3,17 @@ library(tidyverse)
 library(MatchIt)
 # library(feols)
 
+## -------------------------------------------------- ##
+## NOTE: This is a flag for if you want to include   ##
+## people's district of residence as a variable to ##
+## match on for use-purpose later in the code . The ##
+## outputs will be generated accordingly ##.
+
+add_district <- FALSE
+# add_district <- FALSE
+
+## -------------------------------------------------- ##
+
 ## Load the cleaned and trimmed down sample
 df_use <- read_rds("transformed_data/selected_f_ipums_use.Rds")
 df_use_m <- read_rds("transformed_data/selected_m_ipums_use.Rds")
@@ -74,24 +85,47 @@ match_joined_df_m <- bind_rows(
     match_childless_m
 ) |> filter(!is.na(edu_levels_m)) # BIG FLAG: Some people with NA EDUCATION removed.
 
-## Matching Algorithm
-m_exact <- matchit(
-    treatment ~ match_age + br_ch + edu_levels + urban + district, # Urban/rural status compared to district matches a lot of variables.
-    data = match_joined_df,
-    method = "exact", normalize = FALSE
-)
 
-m_exact_m <- matchit(
-    treatment_m ~ match_age_m + br_ch_m + edu_levels_m + urban_m + district_m,
-    data = match_joined_df_m, method = "exact", normalize = FALSE
-)
+## -------------------------------------------------- ##
+## Matching Algorithm/function ##
+## -------------------------------------------------- ##
 
-## Dataset from the matching algorithm
-matched_df <- match_data(m_exact) # Women
-matched_df_m <- match_data(m_exact_m) # Men
+match_function <- function(add_district) {
+    if (add_district) {
+        m_exact <- matchit(
+            treatment ~ match_age + br_ch + edu_levels + urban + district, # Urban/rural status compared to district matches a lot of variables.
+            data = match_joined_df, method = "exact", normalize = FALSE
+        )
 
-write_rds(matched_df, "transformed_data/matched_df.Rds")
-write_rds(matched_df_m, "transformed_data/matched_df_m.Rds")
+        m_exact_m <- matchit(
+            treatment_m ~ match_age_m + br_ch_m + edu_levels_m + urban_m + district_m,
+            data = match_joined_df_m, method = "exact", normalize = FALSE
+        )
+    } else {
+        m_exact <- matchit(
+            treatment ~ match_age + br_ch + edu_levels + urban, # Urban/rural status compared to district matches a lot of variables.
+            data = match_joined_df, method = "exact", normalize = FALSE
+        )
+
+        m_exact_m <- matchit(
+            treatment_m ~ match_age_m + br_ch_m + edu_levels_m + urban_m,
+            data = match_joined_df_m, method = "exact", normalize = FALSE
+        )
+    }
+
+    m_df <- match_data(m_exact) # Women
+    m_df_m <- match_data(m_exact_m) # Men
+
+    return (list(m_df, m_df_m))
+
+}
+
+matched_df <- match_function(add_district)[[1]]
+matched_df_m <- match_function(add_district)[[2]]
+
+
+write_rds(matched_df, "transformed_data/matched_df_01.Rds")
+write_rds(matched_df_m, "transformed_data/matched_df_m_01.Rds")
 
 ## Negative Event times Control Group after matching.
 # Women
@@ -102,13 +136,76 @@ treatment_0 <- matched_df[matched_df$treatment == 1,]
 control_neg_m <- matched_df_m[matched_df_m$treatment_m == 0,]
 treatment_0_m <- matched_df_m[matched_df_m$treatment_m == 1,]
 
-## Two Branching Paths:
-# Run Matching Collapsed if you want a collapsed dataset. 
-# Run Matching Long if you want a long-form many-to-many dataset.
-# (Comment out the one you don't need for a given run)
 
-### Matching Collapsed
-source('scripts/matching_collapsed_2011.R')
+## -------------------------------------------------- ##
+## The Dirt Work of having a final dataframe for analysis.##
+## -------------------------------------------------- ##
+
+# Group the control_neg by subclass and find the weighted mean of our outcome `employed`.
+control_neg <- control_neg |> group_by(subclass) |> 
+  summarize(
+   outcome = mean(employed),
+   outcome_int = sum(employed),
+   count = n(),
+   weights = weights[1]
+  )
+# Merge this with the treatment_0 parents by `subclass`
+long_neg <- treatment_0 |> 
+    left_join(control_neg, by = "subclass", suffix = c('_t','_c'))
+
+# 0 and positive event times.
+# Women
+long_pos <- df_use_11 |> 
+  filter(age_eldch %in% c(0:10)) |> 
+  mutate(t = age_eldch, count = 1, outcome_int = employed, weights = 1) |> 
+  select(age, outcome = employed, outcome_int, parent_id, t, count, weights)
+
+# The dataframe we will need to use if we are analyzing only for women.
+model_df <- bind_rows(
+    long_neg |> select(age, outcome, outcome_int, parent_id, t, count, weights = weights_c),
+    long_pos
+)
+
+## Men
+control_neg_m <- control_neg_m |> group_by(subclass) |> 
+    summarize(
+        outcome_m = mean(employed_m),
+        outcome_m_int = sum(employed_m),
+        count_m = n(),
+        weights_m = weights[1],
+    )
+
+long_neg_m <- treatment_0_m |> left_join(control_neg_m, by = "subclass", suffix = c('_t','_c'))
+
+long_pos_m <- df_use_11_m |> 
+    filter(age_eldch_m %in% c(0:10)) |> 
+    mutate(t_m = age_eldch_m, count_m = 1, outcome_m_int = employed_m, weights_m = 1) |> 
+    select(age_m, outcome_m = employed_m, outcome_m_int, parent_id_m, t_m, count_m, weights_m)
+
+# The dataframe one needs to use if we are analyzing only for men.
+model_df_m <- bind_rows(
+    long_neg_m |> select(age_m, outcome_m, outcome_m_int, parent_id_m, t_m, count_m, weights_m),
+    long_pos_m
+)
+
+## Overall dataframe:
+
+overall_df <- bind_rows(
+  model_df |> mutate(sex = 1),
+  model_df_m |> rename(
+    age = age_m, outcome = outcome_m, outcome_int = outcome_m_int,
+    parent_id = parent_id_m, t = t_m, count = count_m, weights = weights_m
+  ) |> mutate(sex = 2)
+)
+
+
+if (add_district) {
+    write_rds(overall_df, "transformed_data/overall_df_for_analysis_2011.Rds")
+} else {
+    write_rds(overall_df, "transformed_data/overall_df_for_analysis_2011_nodis.Rds")
+}
+
+
 
 ### Matching Long
 # source('scripts/matching_long.R')

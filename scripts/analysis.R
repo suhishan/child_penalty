@@ -2,22 +2,45 @@
 library(tidyverse)
 library(cmdstanr)
 library(fixest)
+library(haven)
 
-# Load the overall data for 2011 (and 2001 for reference)
+## -------------------------------------------------- ##
+## Load data (with districts used for matching)       ##
+## -------------------------------------------------- ##
+
 overall_df <- read_rds("transformed_data/overall_df_for_analysis_2011.Rds")
 overall_df$year <- 2011
 overall_df_01 <- read_rds("transformed_data/overall_df_for_analysis_2001.Rds")
 overall_df_01$year <- 2001
 
 joined_df <- bind_rows(
-  overall_df_01 |> mutate(year = 2001),
-  overall_df |> mutate(year = 2011))
+  overall_df_01 ,
+  overall_df
+)
 
-# NOTE: Think about weights later.
+## -------------------------------------------------- ##
+## Load data (with districts not used for matching)   ##
+## -------------------------------------------------- ##
 
-# Normal LPM (Non-aggregate)
-# Prepare data: factorize event time t, set reference level to -2
-# Women
+overall_df_nodis_01 <- read_rds(
+    "transformed_data/overall_df_for_analysis_2001_nodis.Rds"
+)
+overall_df_nodis_01$year <- 2001
+
+overall_df_nodis_11 <- read_rds(
+    "transformed_data/overall_df_for_analysis_2011_nodis.Rds"
+)
+overall_df_nodis_11$year <- 2011
+
+joined_df_nodis <- bind_rows(
+    overall_df_nodis_01, overall_df_nodis_11
+)
+
+## -------------------------------------------------- ##
+## A function that takes a dataframe as input 
+## and outputs estimates
+## -------------------------------------------------- ##
+
 calc_estimates <- function(dataframe) {
   d_f <- dataframe[dataframe$sex == 1,]
   d_f$t <- factor(d_f$t)
@@ -96,31 +119,66 @@ calc_estimates <- function(dataframe) {
 
 }
 
+## -------------------------------------------------- ##
+## Extract Estimates.
+## -------------------------------------------------- ##
+
 est_01 <- calc_estimates(overall_df_01)
 est_11 <- calc_estimates(overall_df)
 est_join <- calc_estimates(joined_df)
-
-## The graph
-# Plot 1: Normalized penalties (penalty = coef / denominator)
-est_join |>
-    pivot_longer(cols = c('penalty.f', 'penalty.m'), names_to = "metric", values_to = "value") |> 
-    mutate(sex = rep(c("Women", "Men"), times = 16)) |> 
-    ggplot(aes(x = as.numeric(as.character(t)), y = value, color = sex)) +
-    geom_point() +
-    geom_line() +
-    geom_vline(xintercept = -0.5, linetype = 2) +
-    coord_cartesian(ylim = c(-1, 1)) +
-    theme_classic() +
-    labs(x = "Event Time (t)", y = "Normalized Effect", title = "Penalty Estimates by Sex")
+est_join_nodis <- calc_estimates(joined_df_nodis)
 
 
-
-### -------------------- ###
-## Fit a model for both census years ##
-
-joined_df <- bind_rows(
-  overall_df_01 |> mutate(year = 2001),
-  overall_df |> mutate(year = 2011))
+## -------------------------------------------------- ##
+## Plot things.
+## -------------------------------------------------- ##
 
 
+## ----- Plots raw estimates of child penalties. --- ##
 
+
+#TODO: Think about the title.
+plot_coef <- function(dataframe){
+    plot_object <- dataframe |> 
+    mutate(
+        lc_f = coefs.f1 - se.f1,
+        uc_f = coefs.f1 + se.f1,
+        lc_m = coefs.m1 - se.m1,
+        uc_m = coefs.m1 + se.m1
+    ) |> 
+    ggplot(aes(x = t))+
+    geom_pointrange(aes(
+        y = coefs.f1, ymin = lc_f, ymax = uc_f
+    ), color = "red") +
+    geom_pointrange(aes(
+        y = coefs.m1, ymin = lc_m, ymax = uc_m
+    )) +
+    geom_hline(yintercept = 0, linetype = 2, alpha = 0.2)+
+    geom_vline(xintercept = -0.5, linetype = 2)+
+    coord_cartesian(ylim = c(-1, 0.5))+
+    theme_classic()
+    
+    ##----- Return the plot object  ----- #
+    return (plot_object)
+
+}
+
+plot_penalty <- function(dataframe) {
+    dataframe |> 
+    pivot_longer(c(penalty.f, penalty.m)) |> 
+    mutate(
+        Sex = rep(c('Women', 'Men'), times = 16)
+    ) |> ggplot(aes(x = t, y = value)) +
+    geom_point(aes(color = Sex)) +
+    geom_line(aes(color = Sex)) +
+    geom_hline(yintercept = 0, linetype = 2, alpha = 0.2)+
+    geom_vline(xintercept = -0.5, linetype = 2)+
+    coord_cartesian(ylim = c(-0.5, 0.5))+
+    scale_color_manual(
+        values = c('Women' = 'red', 'Men' = 'black')
+    )+
+    theme_classic()
+
+}
+
+plot_coef(est_join_nodis)
