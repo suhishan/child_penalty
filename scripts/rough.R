@@ -1,5 +1,6 @@
 ## Let's see what summarzing for every subclass in
 ## control neg looks like:
+library(tidyverse)
 
 control_neg |> group_by(subclass) |> 
   summarize(
@@ -81,5 +82,36 @@ model_df_m$t_m <- factor(model_df_m$t_m)
 model_df_m$t_m <- relevel(model_df_m$t_m, ref = '-2')
 
 m2 <- lm(employed_m ~ t_m + factor(age_m), data = model_df_m, weights = model_df_m$weight); summary(m2)
+
+
+
+#### Different matching ####
+
+nrow(df_use)
+nrow(df_use_01)
+
+m1 <- match_function(add_district)[[3]]
+summary(m1)
+
+
+
+a <- tibble(
+  subclass = rep(c(1, 2, 3, 4, 7, 13), times = 3),
+  t = rep(c(-5, 2, -5, 0, 1, 2), times = 3)
+)
+
+lookup <- tibble(
+  subclass = unique(a$subclass)
+)
+lookup$t = a$t[match(lookup$subclass, a$subclass)]
+
+
+df <- tibble(
+  subclass = sample(c(1, 2, 3, 4, 7, 13), size = 100, replace = T),
+  t = NA
+)
+
+df$t <- lookup$t[match(df$subclass, lookup$subclass)]
+
 
 

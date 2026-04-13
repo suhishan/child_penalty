@@ -116,7 +116,7 @@ match_function <- function(add_district) {
     m_df <- match_data(m_exact) # Women
     m_df_m <- match_data(m_exact_m) # Men
 
-    return (list(m_df, m_df_m))
+    return (list(m_df, m_df_m, m_exact, m_exact_m))
 
 }
 
@@ -136,65 +136,62 @@ treatment_0 <- matched_df[matched_df$treatment == 1,]
 control_neg_m <- matched_df_m[matched_df_m$treatment_m == 0,]
 treatment_0_m <- matched_df_m[matched_df_m$treatment_m == 1,]
 
-
 ## -------------------------------------------------- ##
 ## The Dirt Work of having a final dataframe for analysis.##
 ## -------------------------------------------------- ##
 
-# Group the control_neg by subclass and find the weighted mean of our outcome `employed`.
-control_neg <- control_neg |> group_by(subclass) |> 
-  summarize(
-   outcome = mean(employed),
-   outcome_int = sum(employed),
-   count = n(),
-   weights = weights[1]
-  )
-# Merge this with the treatment_0 parents by `subclass`
-long_neg <- treatment_0 |> 
-    left_join(control_neg, by = "subclass", suffix = c('_t','_c'))
+## -------------------------------------------------- ##
+## Women
+## -------------------------------------------------- ##
 
-# 0 and positive event times.
-# Women
-long_pos <- df_use_11 |> 
-  filter(age_eldch %in% c(0:10)) |> 
-  mutate(t = age_eldch, count = 1, outcome_int = employed, weights = 1) |> 
-  select(age, outcome = employed, outcome_int, parent_id, t, count, weights)
+lookup_table <- tibble(
+    subclass = unique(treatment_0$subclass)
+)
 
-# The dataframe we will need to use if we are analyzing only for women.
+lookup_table$t <- treatment_0$t[match(lookup_table$subclass, treatment_0$subclass)]
+control_neg$t <- lookup_table$t[match(control_neg$subclass, lookup_table$subclass)]
+
+
+
+long_pos <- df_use_01 |> filter(age_eldch %in% c(0:10)) |> 
+  mutate(weights = 1, subclass = NA, t = age_eldch) |> 
+  select(age, year, dob, employed, weights, subclass, t, parent_id)
+
 model_df <- bind_rows(
-    long_neg |> select(age, outcome, outcome_int, parent_id, t, count, weights = weights_c),
+    control_neg |> select(age, year, dob, employed, weights, subclass, t, parent_id),
     long_pos
 )
 
+## -------------------------------------------------- ##
 ## Men
-control_neg_m <- control_neg_m |> group_by(subclass) |> 
-    summarize(
-        outcome_m = mean(employed_m),
-        outcome_m_int = sum(employed_m),
-        count_m = n(),
-        weights_m = weights[1],
-    )
+## -------------------------------------------------- ##
 
-long_neg_m <- treatment_0_m |> left_join(control_neg_m, by = "subclass", suffix = c('_t','_c'))
+lookup_table_m <- tibble(
+    subclass = unique(treatment_0_m$subclass)
+)
 
-long_pos_m <- df_use_11_m |> 
-    filter(age_eldch_m %in% c(0:10)) |> 
-    mutate(t_m = age_eldch_m, count_m = 1, outcome_m_int = employed_m, weights_m = 1) |> 
-    select(age_m, outcome_m = employed_m, outcome_m_int, parent_id_m, t_m, count_m, weights_m)
+lookup_table_m$t_m <- treatment_0_m$t_m[match(lookup_table_m$subclass, treatment_0_m$subclass)]
+control_neg_m$t_m <- lookup_table_m$t_m[match(control_neg_m$subclass, lookup_table_m$subclass)]
 
-# The dataframe one needs to use if we are analyzing only for men.
+
+
+long_pos_m <- df_use_01_m |> filter(age_eldch_m %in% c(0:10)) |> 
+  mutate(weights = 1, subclass = NA, t_m = age_eldch_m) |> 
+  select(age_m, year_m, dob_m, employed_m, weights, subclass, t_m, parent_id_m)
+
 model_df_m <- bind_rows(
-    long_neg_m |> select(age_m, outcome_m, outcome_m_int, parent_id_m, t_m, count_m, weights_m),
+    control_neg_m |> select(age_m, year_m, dob_m, employed_m, weights, subclass, t_m, parent_id_m),
     long_pos_m
 )
+
 
 ## Overall dataframe:
 
 overall_df <- bind_rows(
   model_df |> mutate(sex = 1),
   model_df_m |> rename(
-    age = age_m, outcome = outcome_m, outcome_int = outcome_m_int,
-    parent_id = parent_id_m, t = t_m, count = count_m, weights = weights_m
+    age = age_m, employed = employed_m, year = year_m, dob = dob_m,
+    parent_id = parent_id_m, t = t_m,
   ) |> mutate(sex = 2)
 )
 
