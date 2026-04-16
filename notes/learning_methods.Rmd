@@ -59,6 +59,13 @@ a. The age-period-cohort effect i.e. in our sample age-employment profile is ass
 b. We only have cross-sectional data.
 c. The matching algorithm was only able to match on ~7,000 distinct covariate groups instead of the upper bound of ~25,000 distinct covariate groups.
 
+*New Problem/Methodological Concerns*
+
+The assumptions:
+1. The counterfactual for people with first-born aged 0 is matched to people aged -1, -2,... to -5 years younger but interviewed in the same year. So while the data on employment will not be counfounded by period (i.e. if some labor supply or demand shock occured in 2011 it will have affected all of them), clearly there's a cohort effect where we are estimating the counterfactual of 5 years ago with people who are aged 5 years younger NOW. The same goes for people who we require after 1, 2, 3 .. 10 years of age, which we have limited to analyzing people aged 10 years older NOW. 
+
+Even in an ideal panel data scenario causal effect is hard, but with just one census data, this requires extremely strong assumptions.
+
 
 
 

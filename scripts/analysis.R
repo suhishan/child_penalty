@@ -8,11 +8,19 @@ library(haven)
 ## Load data (with districts used for matching)       ##
 ## -------------------------------------------------- ##
 
-overall_df <- read_rds("transformed_data/overall_df_for_analysis_2011.Rds")
-overall_df$year <- 2011
-overall_df_01 <- read_rds("transformed_data/overall_df_for_analysis_2001.Rds")
-overall_df_01$year <- 2001
 
+overall_df_01 <- read_rds("transformed_data/overall_df_for_analysis_2001.Rds")
+overall_df_01 <- overall_df_01 |> 
+  mutate(
+    year = 2001, weights_total = weights * perwt
+  )
+
+
+overall_df <- read_rds("transformed_data/overall_df_for_analysis_2011.Rds")
+overall_df <- overall_df |> 
+  mutate(
+    year = 2011, weights_total = weights * perwt
+  )
 joined_df <- bind_rows(
   overall_df_01 ,
   overall_df
@@ -25,12 +33,19 @@ joined_df <- bind_rows(
 overall_df_nodis_01 <- read_rds(
     "transformed_data/overall_df_for_analysis_2001_nodis.Rds"
 )
-overall_df_nodis_01$year <- 2001
+overall_df_nodis_01 <- overall_df_nodis_01 |> 
+  mutate(
+    year = 2001, weights_total = weights * perwt
+  )
 
 overall_df_nodis_11 <- read_rds(
     "transformed_data/overall_df_for_analysis_2011_nodis.Rds"
 )
-overall_df_nodis_11$year <- 2011
+
+overall_df_nodis_11 <- overall_df_nodis_11 |> 
+  mutate(
+    year = 2011, weights_total = weights * perwt
+  )
 
 joined_df_nodis <- bind_rows(
     overall_df_nodis_01, overall_df_nodis_11
@@ -54,8 +69,8 @@ calc_estimates <- function(dataframe) {
   ## Women
   # Overall Model (with event time dummies)
   mf.1 <- feols(
-      outcome ~ t | factor(age) + factor(year),
-      weights = d_f$weights,
+      employed ~ t | factor(age) +factor(year),
+      weights = d_f$weights_total,
       data = d_f,
       vcov = 'hetero'
   )
@@ -63,17 +78,17 @@ calc_estimates <- function(dataframe) {
   coefs.f1 <- append(coefs.f1, 0, after = 3)  # Insert 0 for reference level (-2)
   se.f1 <- se(mf.1)
   se.f1 <- append(se.f1, 0, after = 3)
-
-  # Model without the event time dummies (for denominator/normalization)
-  mf.2 <- feols(
-      outcome ~ factor(age),
-      weights = d_f$weights,
-      data = d_f,
-      vcov = 'hetero'
+ 
+  ## ----- Counterfactuals ----- ##
+  d_f$t_cf <- factor(
+    "-2", levels = levels(d_f$t)
   )
 
-  d_f$predict.f2 <- predict(mf.2)
-  denominator.f <- aggregate(predict.f2 ~ t, data = d_f, FUN = mean)$predict.f2
+  d_f$predict.f2 <- predict(
+    mf.1, newdata = d_f |> select(age, year, t = t_cf)
+  )
+  denominator.f <- d_f |> group_by(t) |> 
+    summarize(weighted.mean(predict.f2, weights_total)) |> pull()
 
   # Build estimates tibble for women
   estimates <- tibble(
@@ -85,8 +100,8 @@ calc_estimates <- function(dataframe) {
 
   ## Men
   mm.1 <- feols(
-      outcome ~ t | factor(age) + factor(year),
-      weights = d_m$weights,
+      employed ~ t | factor(age) + factor(year),
+      weights = d_m$weights_total,
       data = d_m,
       vcov = 'hetero'
   )
@@ -95,17 +110,18 @@ calc_estimates <- function(dataframe) {
   se.m1 <- se(mm.1)
   se.m1 <- append(se.m1, 0, after = 3)
 
-  # Model without event time dummies (for denominator)
-  mm.2 <- feols(
-      outcome ~ factor(age),
-      weights = d_m$weights,
-      data = d_m,
-      vcov = 'hetero'
+  ## ----- Counterfactuals ----- ##
+  d_m$t_cf <- factor(
+    "-2", levels = levels(d_m$t)
   )
 
-  d_m$predict.m2 <- predict(mm.2)
-  denominator.m <- aggregate(predict.m2 ~ t, data = d_m, FUN = mean)$predict.m2
+  d_m$predict.m2 <- predict(
+    mm.1, newdata = d_m |> select(age, year, t = t_cf)
+  )
 
+  denominator.m <- d_m |> group_by(t) |> 
+    summarize(weighted.mean(predict.m2, weights_total)) |> pull()
+    
   # Append men's estimates to the tibble
   estimates <- estimates |> mutate(
       coefs.m1,
@@ -114,7 +130,7 @@ calc_estimates <- function(dataframe) {
   ) |> mutate(
       penalty.m = coefs.m1 / denominator.m
   )
-    
+
   return (estimates)
 
 }
@@ -181,4 +197,4 @@ plot_penalty <- function(dataframe) {
 
 }
 
-plot_coef(est_join_nodis)
+

@@ -94,22 +94,22 @@ match_function <- function(add_district) {
     if (add_district) {
         m_exact <- matchit(
             treatment ~ match_age + br_ch + edu_levels + urban + district, # Urban/rural status compared to district matches a lot of variables.
-            data = match_joined_df, method = "exact", normalize = FALSE
+            data = match_joined_df, method = "exact", normalize = FALSE, replace = TRUE
         )
 
         m_exact_m <- matchit(
             treatment_m ~ match_age_m + br_ch_m + edu_levels_m + urban_m + district_m,
-            data = match_joined_df_m, method = "exact", normalize = FALSE
+            data = match_joined_df_m, method = "exact", normalize = FALSE, replace = TRUE
         )
     } else {
         m_exact <- matchit(
             treatment ~ match_age + br_ch + edu_levels + urban, # Urban/rural status compared to district matches a lot of variables.
-            data = match_joined_df, method = "exact", normalize = FALSE
+            data = match_joined_df, method = "exact", normalize = FALSE, replace = TRUE
         )
 
         m_exact_m <- matchit(
             treatment_m ~ match_age_m + br_ch_m + edu_levels_m + urban_m,
-            data = match_joined_df_m, method = "exact", normalize = FALSE
+            data = match_joined_df_m, method = "exact", normalize = FALSE, replace = TRUE
         )
     }
 
@@ -155,10 +155,10 @@ control_neg$t <- lookup_table$t[match(control_neg$subclass, lookup_table$subclas
 
 long_pos <- df_use_01 |> filter(age_eldch %in% c(0:10)) |> 
   mutate(weights = 1, subclass = NA, t = age_eldch) |> 
-  select(age, year, dob, employed, weights, subclass, t, parent_id)
+  select(age, year, dob, employed, weights, subclass, t, parent_id, perwt)
 
 model_df <- bind_rows(
-    control_neg |> select(age, year, dob, employed, weights, subclass, t, parent_id),
+    control_neg |> select(age, year, dob, employed, weights, subclass, t, parent_id, perwt),
     long_pos
 )
 
@@ -177,10 +177,10 @@ control_neg_m$t_m <- lookup_table_m$t_m[match(control_neg_m$subclass, lookup_tab
 
 long_pos_m <- df_use_01_m |> filter(age_eldch_m %in% c(0:10)) |> 
   mutate(weights = 1, subclass = NA, t_m = age_eldch_m) |> 
-  select(age_m, year_m, dob_m, employed_m, weights, subclass, t_m, parent_id_m)
+  select(age_m, year_m, dob_m, employed_m, weights, subclass, t_m, parent_id_m, perwt_m)
 
 model_df_m <- bind_rows(
-    control_neg_m |> select(age_m, year_m, dob_m, employed_m, weights, subclass, t_m, parent_id_m),
+    control_neg_m |> select(age_m, year_m, dob_m, employed_m, weights, subclass, t_m, parent_id_m, perwt_m),
     long_pos_m
 )
 
@@ -191,7 +191,7 @@ overall_df <- bind_rows(
   model_df |> mutate(sex = 1),
   model_df_m |> rename(
     age = age_m, employed = employed_m, year = year_m, dob = dob_m,
-    parent_id = parent_id_m, t = t_m,
+    parent_id = parent_id_m, perwt = perwt_m, t = t_m,
   ) |> mutate(sex = 2)
 )
 

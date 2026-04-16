@@ -1,3 +1,23 @@
+# Playing around to see the sample size.
+x <- df_f |> filter(
+  age %in% c(15:45) & 
+  bio_mom == 1 &
+  (is.na(age_fc) | age_fc %in% c(20:45)) & 
+  year == 2011# if no child or if first child birthed between 20 and 49.
+) |> filter(is.na(age_eldch) | age_eldch %in% c(0:10))
+
+# Unmarried sample
+x_unm <- x |> filter(ever_married == 0)
+table(x_unm$age_eldch, useNA = "always")
+
+# Let's look at the original dataset.
+ip_f |> filter(MARST == 1) |> group_by(ELDCH) |> count() |> print(n = 1000)
+
+df_f |> filter(
+  ever_married == 0
+) |> group_by(age_eldch) |> count
+
+
 ## Let's see what summarzing for every subclass in
 ## control neg looks like:
 library(tidyverse)
@@ -112,6 +132,94 @@ df <- tibble(
 )
 
 df$t <- lookup$t[match(df$subclass, lookup$subclass)]
+
+
+
+### feols regression ###
+
+
+nrow(overall_df)
+
+
+
+### Playing around with the regression
+
+
+d_f <- overall_df[overall_df$sex == 1,]
+  d_f$t <- factor(d_f$t)
+  d_f$t <- relevel(d_f$t, ref = "-2")
+
+  # Men
+  d_m <- overall_df[overall_df$sex == 2,]
+  d_m$t <- factor(d_m$t)
+  d_m$t <- relevel(d_m$t, ref = "-2")
+
+  ## Women
+  # Overall Model (with event time dummies)
+  mf.1 <- feols(
+      employed ~ t | factor(age) +factor(year),
+      weights = d_f$weights,
+      data = d_f,
+      vcov = 'hetero'
+  )
+  coefs.f1 <- coef(mf.1)
+  coefs.f1 <- append(coefs.f1, 0, after = 3)  # Insert 0 for reference level (-2)
+  se.f1 <- se(mf.1)
+  se.f1 <- append(se.f1, 0, after = 3)
+ 
+  ## ----- Counterfactuals ----- ##
+  d_f$t_cf <- factor(
+    "-2", levels = levels(d_f$t)
+  )
+
+  d_f$predict.f2 <- predict(
+    mf.1, newdata = d_f |> select(age, year, t = t_cf)
+  )
+  denominator.f <- d_f |> group_by(t) |> 
+    summarize(weighted.mean(predict.f2, weights))
+
+  # Build estimates tibble for women
+  estimates <- tibble(
+      t = seq(-5, 10, by = 1),
+      coefs.f1,
+      se.f1,
+      denominator.f,
+  ) |> mutate(penalty.f = coefs.f1 / denominator.f)  # Fixed: was denominator (undefined)
+
+  ## Men
+  mm.1 <- feols(
+      employed ~ t | factor(age) + factor(year),
+      weights = d_m$weights,
+      data = d_m,
+      vcov = 'hetero'
+  )
+  coefs.m1 <- coef(mm.1)
+  coefs.m1 <- append(coefs.m1, 0, after = 3)
+  se.m1 <- se(mm.1)
+  se.m1 <- append(se.m1, 0, after = 3)
+
+  ## ----- Counterfactuals ----- ##
+  d_m$t_cf <- factor(
+    "-2", levels = levels(d_m$t)
+  )
+
+  d_m$predict.m2 <- predict(
+    mm.1, newdata = d_m |> select(age, year, t = t_cf)
+  )
+
+  denominator.m <- d_m |> group_by(t) |> 
+    summarize(weighted.mean(predict.m2, weights)) |> pull()
+  # Append men's estimates to the tibble
+  estimates <- estimates |> mutate(
+      coefs.m1,
+      se.m1,
+      denominator.m
+  ) |> mutate(
+      penalty.m = coefs.m1 / denominator.m
+  )
+
+
+estimates$coefs.m1
 
 
 
