@@ -223,3 +223,82 @@ estimates$coefs.m1
 
 
 
+
+
+
+
+
+
+
+## Playing around with the matching.
+
+me_f <- match_function(add_district)[[3]]
+me_m <- match_function(add_district)[[4]]
+
+df_use_f |> group_by(ever_married) |> 
+  summarise(
+    sum(is.na(age_eldch)),
+    sum(!is.na(age_eldch))
+  )
+
+
+
+df_use_m |> group_by(ever_married_m) |> 
+  summarise(
+    sum(is.na(age_eldch_m)),
+    sum(!is.na(age_eldch_m))
+  )
+
+df_use_m |> filter(ever_married_m == 1) |> 
+  group_by(age_eldch_m) |> count()
+
+table(df_use_m$age_eldch_m[df_use_m$ever_married_m == 1], useNA = "always")
+
+#Relationship to the head.
+
+table(ip_f$RELATE)
+
+## Estimates are so inflated.
+
+overall_df_nodis_01 |> group_by(t) |> 
+  summarize(
+    sum(weights), sum(perwt), sum(weights_total),
+    weighted.mean(employed, weights_total)
+  )
+
+
+summary(lm(employed ~ relevel(factor(t), ref = "-2") + factor(age),
+ data = overall_df_nodis_01), 
+ weights = overall_df_nodis_01$weights_total)
+
+
+## Detrending.
+
+joined_df_nodis$t_num <- as.numeric(joined_df_nodis$t)
+
+joined_df_nodis_f <- joined_df_nodis[joined_df_nodis$sex == 1,]
+
+pre_data_f <- joined_df_nodis_f[joined_df_nodis_f$t_num < -1, ]
+
+# Regression 
+
+pre_reg_f <- feols(
+  employed ~ t_num | factor(age) + factor(year),
+  weights = ~weights_total,
+  vcov = "hetero",
+  data = pre_data_f
+)
+
+beta_time  <- coef(pre_reg_f)["t_num"]
+
+joined_df_nodis_f$employed_detrended <- joined_df_nodis_f$employed - beta_time * joined_df_nodis_f$t_num
+
+joined_df_nodis_f$t <- factor(joined_df_nodis_f$t)
+joined_df_nodis_f$t <- relevel(joined_df_nodis_f$t, ref = "-2")
+
+model <- feols(
+  employed_detrended ~ t | factor(age) + factor(year),
+  weights = ~weights_total,
+  vcov = "hetero",
+  data = joined_df_nodis_f
+)

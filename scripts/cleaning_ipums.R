@@ -75,6 +75,11 @@ perwt_m <- ip_m$PERWT
 
 hist(perwt, breaks = 20); hist(perwt_m, breaks = 20)
 
+## ---------- Relationship to household head ----------##
+
+relate <- ip_f$RELATE
+relate_m <- ip_m$RELATE
+
 ## ----- Age of the Eldest Child ----- ##
 
 # NOTE: The child is linked to their father and mother via is the IPUMS family pointer
@@ -115,10 +120,10 @@ year_fc_m <- year_m - age_eldch_m # Men
 table(ip_f$MARST, useNA = "always")
 table(ip_m$MARST, useNA = "always")
 
-ever_married <- ifelse(ip_f$MARST %in% c(2:4), 1, 0) # Have you ever married or not? (Married, Divorced, Widowed)
+ever_married <- ifelse(ip_f$MARST %in% c(1:4), ip_f$MARST, NA) # Have you ever married or not? (Married, Divorced, Widowed)
 age_fm <- ifelse(ip_f$AGEMARR == 99, NA, ip_f$AGEMARR) # Age at first marriage (Women), If haven't married: NA.
 
-ever_married_m <- ifelse(ip_m$MARST %in% c(2:4), 1, 0) # Have you ever married or not (Married, Divorced, Widowed)
+ever_married_m <- ifelse(ip_m$MARST %in% c(1:4), ip_m$MARST, NA) # Have you ever married or not (Married, Divorced, Widowed)
 age_fm_m <- ifelse(ip_m$AGEMARR == 99, NA, ip_m$AGEMARR) # Age at first marriage (Men), If haven't married: NA.
 
 
@@ -175,7 +180,7 @@ urban_m <- ifelse(ip_m$URBAN == 2, 1, 0)
 ## DataFrame vessel for all the required variables (female)
 # Women
 df_f <- data.frame(
-    age, year, dob, pernum, perwt, ever_married, age_fm,
+    age, year, dob, pernum, perwt, relate, ever_married, age_fm,
     age_eldch, age_fc, year_fc, employed, months_worked, edu_levels, 
     br_ch, hindu, district, urban,
     bio_mom = ifelse(ip_f$STEPMOM == 0, 1, 0)
@@ -183,7 +188,7 @@ df_f <- data.frame(
 
 # Men
 df_m <- data.frame(
-    age_m, year_m, dob_m, pernum_m, perwt_m, ever_married_m, age_fm_m,
+    age_m, year_m, dob_m, pernum_m, perwt_m, relate_m, ever_married_m, age_fm_m,
     age_eldch_m, age_fc_m, year_fc_m, employed_m, months_worked_m, edu_levels_m, 
     br_ch_m, hindu_m, district_m, urban_m,
     bio_dad = ifelse(ip_m$STEPPOP == 0, 1, 0)
@@ -197,13 +202,19 @@ df_m <- data.frame(
 # 3. Biological Mothers only.
 
 df_use_f <- df_f |> filter(
- age %in% c(15:49) & ever_married == 1 & bio_mom == 1 & 
-    (is.na(age_fc) | age_fc %in% c(20:49)) # if no child or if first child birthed between 20 and 49.
+ age %in% c(15:45) & !is.na(ever_married) &
+    (is.na(age_fc) | age_fc %in% c(20:45)) &  # if no child or if first child birthed between 20 and 49.
+    (is.na(age_eldch) | age_eldch %in% c(0:10)) 
+    # & relate %in% c(1, 2, 3)
+    #relate%in% c(1, 2, 3) # Only keep if head, spouse or child.
 )
 
 df_use_m <- df_m |> filter(
-    age_m %in% c(15:49) & ever_married_m == 1 & bio_dad == 1 & 
-        (is.na(age_fc_m) | age_fc_m %in% c(20:49)) # if no child or if first child birthed between 20 and 49.
+    age_m %in% c(15:45) & !is.na(ever_married_m) &
+        (is.na(age_fc_m) | age_fc_m %in% c(20:45)) & # if no child or if first child birthed between 20 and 49.
+        (is.na(age_eldch_m) | age_eldch_m %in% c(0:10)) 
+        # & relate_m %in% c(1, 2, 3)# relate_m %in% c(1, 2, 3) # Only keep if head, spouse or child.
+        
 )
 
 write_rds(df_use_f, "transformed_data/selected_f_ipums_use.Rds")

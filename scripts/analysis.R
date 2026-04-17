@@ -4,6 +4,14 @@ library(cmdstanr)
 library(fixest)
 library(haven)
 
+## --------------------------------------------------##
+## Run all the cleaning and stuff beforehand for any changes ##
+## -------------------------------------------------- ##
+
+source("scripts/cleaning_ipums.R")
+source("scripts/matching_2001.R")
+source("scripts/matching_2011.R")
+
 ## -------------------------------------------------- ##
 ## Load data (with districts used for matching)       ##
 ## -------------------------------------------------- ##
@@ -56,20 +64,49 @@ joined_df_nodis <- bind_rows(
 ## and outputs estimates
 ## -------------------------------------------------- ##
 
+ detrend <- function(df_sex) {
+    df_sex$t_num <- as.numeric(df_sex$t)
+    pre_data <- df_sex[df_sex$t_num < -1,]
+   
+    pre_reg <- feols(
+      employed ~ t_num | factor(age) + factor(year),
+      weights = ~weights_total,
+      vcov = "hetero",
+      data = df_sex
+    )
+   
+    beta_time <- coef(pre_reg)['t_num']
+    df_sex$employed_detrended <- df_sex$employed - (beta_time * df_sex$t_num)
+   
+    return (df_sex)
+ }
+
+
+
+
+
+
 calc_estimates <- function(dataframe) {
+
   d_f <- dataframe[dataframe$sex == 1,]
+  d_m <- dataframe[dataframe$sex == 2,]
+
+  # ----- Detrend the dependent variable -----#
+  d_f <- detrend(d_f)
+  d_m <- detrend(d_m)
+
+  # ----- t as factor with reference level -2 ----- #
   d_f$t <- factor(d_f$t)
   d_f$t <- relevel(d_f$t, ref = "-2")
 
   # Men
-  d_m <- dataframe[dataframe$sex == 2,]
   d_m$t <- factor(d_m$t)
   d_m$t <- relevel(d_m$t, ref = "-2")
 
   ## Women
   # Overall Model (with event time dummies)
   mf.1 <- feols(
-      employed ~ t | factor(age) +factor(year),
+      employed_detrended ~ t | factor(age) +factor(year),
       weights = d_f$weights_total,
       data = d_f,
       vcov = 'hetero'
@@ -100,7 +137,7 @@ calc_estimates <- function(dataframe) {
 
   ## Men
   mm.1 <- feols(
-      employed ~ t | factor(age) + factor(year),
+      employed_detrended ~ t | factor(age) + factor(year),
       weights = d_m$weights_total,
       data = d_m,
       vcov = 'hetero'
@@ -131,7 +168,7 @@ calc_estimates <- function(dataframe) {
       penalty.m = coefs.m1 / denominator.m
   )
 
-  return (estimates)
+  return (list(estimates, mf.1, mm.1))
 
 }
 
@@ -139,11 +176,10 @@ calc_estimates <- function(dataframe) {
 ## Extract Estimates.
 ## -------------------------------------------------- ##
 
-est_01 <- calc_estimates(overall_df_01)
-est_11 <- calc_estimates(overall_df)
-est_join <- calc_estimates(joined_df)
-est_join_nodis <- calc_estimates(joined_df_nodis)
+est_join_nodis <- calc_estimates(joined_df_nodis)[[1]]
 
+est_nodis_01 <- calc_estimates(overall_df_nodis_01)[[1]]
+est_nodis_11 <- calc_estimates(overall_df_nodis_11)[[1]]
 
 ## -------------------------------------------------- ##
 ## Plot things.
@@ -198,3 +234,8 @@ plot_penalty <- function(dataframe) {
 }
 
 
+plot_penalty(est_join_nodis)
+plot_coef(est_join_nodis)
+
+plot_penalty(est_nodis_01)
+plot_penalty(est_nodis_11)

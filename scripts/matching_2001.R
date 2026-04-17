@@ -21,13 +21,13 @@ df_use_m <- read_rds("transformed_data/selected_m_ipums_use.Rds")
 # Have a variable on a) whether a person is childless and b) whether their eldest child was born in the interview year.
 df_use <- df_use |> mutate(
     childless = ifelse(is.na(age_eldch), 1, 0), # If a person is childless in the sample i.e. no own child in the household.
-    child0 = ifelse(age_eldch == 0, 1, 0),
+    child0 = ifelse(age_eldch == 0 & !is.na(age_eldch), 1, 0),
     parent_id = row_number() # If a person had a child in the given year.
 )
 
 df_use_m <- df_use_m |> mutate(
     childless_m = ifelse(is.na(age_eldch_m), 1, 0), # If a person is childless in the sample i.e. no own child in the household.
-    child0_m = ifelse(age_eldch_m == 0, 1, 0),
+    child0_m = ifelse(age_eldch_m == 0 & !is.na(age_eldch_m), 1, 0),
     parent_id_m = row_number() # If a person had a child in the given year.
 )
 
@@ -93,22 +93,22 @@ match_joined_df_m <- bind_rows(
 match_function <- function(add_district) {
     if (add_district) {
         m_exact <- matchit(
-            treatment ~ match_age + br_ch + edu_levels + urban + district, # Urban/rural status compared to district matches a lot of variables.
+            treatment ~ match_age  + edu_levels + urban + ever_married + district, # Urban/rural status compared to district matches a lot of variables.
             data = match_joined_df, method = "exact", normalize = FALSE, replace = TRUE
         )
 
         m_exact_m <- matchit(
-            treatment_m ~ match_age_m + br_ch_m + edu_levels_m + urban_m + district_m,
+            treatment_m ~ match_age_m  + edu_levels_m + urban_m + ever_married_m + district_m,
             data = match_joined_df_m, method = "exact", normalize = FALSE, replace = TRUE
         )
     } else {
         m_exact <- matchit(
-            treatment ~ match_age + br_ch + edu_levels + urban, # Urban/rural status compared to district matches a lot of variables.
+            treatment ~ match_age + edu_levels + urban + ever_married, # Urban/rural status compared to district matches a lot of variables.
             data = match_joined_df, method = "exact", normalize = FALSE, replace = TRUE
         )
 
         m_exact_m <- matchit(
-            treatment_m ~ match_age_m + br_ch_m + edu_levels_m + urban_m,
+            treatment_m ~ match_age_m + edu_levels_m + urban_m + ever_married_m,
             data = match_joined_df_m, method = "exact", normalize = FALSE, replace = TRUE
         )
     }
