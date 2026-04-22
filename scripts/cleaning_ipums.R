@@ -197,7 +197,7 @@ df_m <- data.frame(
 
 ## ---------- Filtering out the sample ---------- ##
 # Three Criterias:
-# 1. Ages 15 to 49 (and age at first birth between 20 and 49)
+# 1. Ages 15 to 45 (and age at first birth between 20 and 45)
 # 2. Married, divorced or widowed.
 # 3. Biological Mothers only.
 
@@ -205,21 +205,25 @@ df_use_f <- df_f |> filter(
  age %in% c(15:45) & !is.na(ever_married) &
     (is.na(age_fc) | age_fc %in% c(20:45)) &  # if no child or if first child birthed between 20 and 49.
     (is.na(age_eldch) | age_eldch %in% c(0:10)) 
-    # & relate %in% c(1, 2, 3)
-    #relate%in% c(1, 2, 3) # Only keep if head, spouse or child.
+    & relate %in% c(1, 2, 3)
+    ## Only keep if head, spouse or child.
 )
 
 df_use_m <- df_m |> filter(
     age_m %in% c(15:45) & !is.na(ever_married_m) &
         (is.na(age_fc_m) | age_fc_m %in% c(20:45)) & # if no child or if first child birthed between 20 and 49.
         (is.na(age_eldch_m) | age_eldch_m %in% c(0:10)) 
-        # & relate_m %in% c(1, 2, 3)# relate_m %in% c(1, 2, 3) # Only keep if head, spouse or child.
+        & relate_m %in% c(1, 2, 3)## Only keep if head, spouse or child.
         
 )
+
 
 write_rds(df_use_f, "transformed_data/selected_f_ipums_use.Rds")
 write_rds(df_use_m, "transformed_data/selected_m_ipums_use.Rds")
 
 
 
-## ---------- Summary table ---------- ##
+## ---------- Summary table (sample sizes) ---------- ##
+
+table(df_use_f$year)
+table(df_use_m$year)

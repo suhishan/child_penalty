@@ -1,0 +1,15 @@
+
+
+Assumptions:
+
+a) No anticipation.
+b) A common level trends condition for untreated potential outcomes across timing cohorts. 
+
+These assumptions are violated if fertility timing is correlated 
+
+**Event Study**: The effect of having a child of *given age*.
+**This implies that if the exogeneity of fertility timing fails then the event study is compromised**
+
+
+"These results reveal that women have their first child when their earnings profiles start to flatten out, and that women who have children later are on wage profiles thatcontinue to grow beyond those of women who have children earlier. This is clear evidence of a violation of the parallel-trend assumption."
+

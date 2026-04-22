@@ -302,3 +302,81 @@ model <- feols(
   vcov = "hetero",
   data = joined_df_nodis_f
 )
+
+a <- calc_estimates(overall_df_01)[[1]]
+
+a |> 
+      mutate(
+        pen_lc_f = penalty.f - 1.811 * penalty.f.se ,
+        pen_uc_f = penalty.f + 1.811 * penalty.f.se ,
+        pen_lc_m = penalty.m - 1.811 * penalty.m.se,
+        pen_uc_m = penalty.m + 1.811 * penalty.m.se
+      ) |> 
+   ggplot(aes(x = t))+
+    geom_pointrange(aes(
+        y = penalty.f, ymin = pen_lc_f, ymax = pen_uc_f, color = "Female"
+    ), , shape = 17) +
+    geom_pointrange(aes(
+        y = penalty.m, ymin = pen_lc_m, ymax = pen_uc_m, color = "Male"
+    ), shape = 16) +
+    geom_hline(yintercept = 0, linetype = 2, alpha = 0.5)+
+    geom_vline(xintercept = -0.5, linetype = 2)+
+    coord_cartesian(ylim = c(-0.4, 0.3))+
+    scale_color_viridis_d(
+      option = "cividis", begin = 0.2, end = 0.8, 
+      name = "Sex"
+    )+
+    scale_x_continuous(breaks = unique(a$t))+
+    labs(
+      x = "Event time(t)", y = "Impact on Employment Rate", 
+      subtitle = "Estimates relative to event time t = -2",
+      title = paste(title)
+    )+
+    theme_classic()+
+    theme(
+      legend.position = "top"
+    )
+
+
+
+
+
+
+
+
+ggplot(aes(x = t, y = value)) +
+    geom_point(aes(color = Sex, shape = Sex), size = 3) +
+    geom_line(aes(color = Sex))+
+    geom_hline(yintercept = 0, linetype = 2, alpha = 0.5)+
+    geom_vline(xintercept = -0.5, linetype = 2)+
+    annotate("text", x = -1.5, y = 0.2, label = "First Child")+
+    coord_cartesian(ylim = c(-0.4, 0.3))+
+    scale_color_viridis_d(
+      option = "cividis", begin = 0.2, end = 0.8, 
+      name = "Sex"
+    )+
+    labs(
+      x = "Event times (t)", y = "Impact on Employment Rate (Penalty)",
+      subtitle = "Estimates relative to event time t = -2",
+      title = paste(title)
+    )+
+    scale_x_continuous(breaks = unique(dataframe$t))+
+    theme_classic()+
+      theme(
+        legend.position = "bottom"
+      )
+
+
+
+b <- calc_estimates(overall_df_01)[[2]]
+vcov(b)
+
+matrix(c(0.5, 0, 0, 0.33), nrow = 2) %*% 
+  matrix(c(2, 0.1, 0.1, 3), nrow = 2) %*% 
+  matrix(c(0.5, 0, 0, 0.33), nrow = 2)
+
+
+
+
+
+
