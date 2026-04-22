@@ -1,14 +1,35 @@
 *Plots*
 
 * Exactly like the paper*
-[ ] Produce the sample sizes table in html as well.
+[X] Produce the sample sizes table in html as well.
 
 
-[ ] 2001 District
-[ ] 2001 No District
-[ ] 2011 District
-[ ] 2011 No District
+[X] 2001 District
+[X] 2001 No District
+[X] 2011 District
+[X] 2011 No District
 
-[ ] Joined No District
-[ ] Joined No District.
+[X] Joined No District
+[X] Joined No District.
+
+
+## The Map for how I want to procede.
+
+2001
+Exactly as the paper.
+*Different Matching Specifications*
+1. Matching only for parents from -5 to -1
+2. Matching everyone from -5 to -1 to 1 and 10.
+
+*Different Sample Specifications*
+1. *Not* conditioning head of house, partner, and child.
+2. Conditioning only on the Married Sample.
+
+
+2011
+Exactly as the paper.
+
+Joined
+Exactly as the paper.
+
 
