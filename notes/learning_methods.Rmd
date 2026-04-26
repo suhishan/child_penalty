@@ -1,8 +1,5 @@
 ## Variables:
 
-
-
-
 ## Note on variables and replication.
 
 ### How are event times categorized in the Kleven Paper?

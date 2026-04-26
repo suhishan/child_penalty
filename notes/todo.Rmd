@@ -17,19 +17,49 @@
 
 2001
 Exactly as the paper.
-*Different Matching Specifications*
-1. Matching only for parents from -5 to -1
-2. Matching everyone from -5 to -1 to 1 and 10.
 
 *Different Sample Specifications*
 1. *Not* conditioning head of house, partner, and child.
 2. Conditioning only on the Married Sample.
 
+*Different Matching Specifications*
+1. Matching only for parents from -5 to -1
+2. Matching everyone from -5 to -1 to 1 and 10.
 
-2011
-Exactly as the paper.
 
-Joined
-Exactly as the paper.
 
+
+Do this for 2001, 2011 and Joint.
+
+
+
+## Current Workflow:
+
+1. The first file we have is `cleaning_ipums.R`
+*input*: The Nepal Census Joined .Rds file.
+*process*: Clean some stuff, check for variable availability, and select required variables, also filter variables to send to matching.
+*output*: Filtered and selected sample to be sent to matching. (Output will have different sample for men and women)
+
+
+2. Matching 
+*two files* : matching_2001.R and matching_2011.R
+Ideally I'd want to match at once but given that these samples are 10 years apart, it is in the interest of the reader to see sample specific estimates, and in the end a joint estimate with year as fixed effect.
+
+*input* : Take the two male and female files from part 1.
+*process* : Divide the datasets into 4 :
+a. Male 2001
+b. Female 2001 for the matching_2001.R file
+
+a. Male 2011
+b. Female 2011 for the matching_2011.R file
+
+Conduct matching based on certain covariates for each of these separately
+
+*Output*: One overall dataframe with selected variables for 2001 and another overall dataframe i.e. men and women with selected variables for the year 2011.
+
+
+3. The file analysis.R
+*input*: The two overall dataframes.
+*process*: Do the regression have the estimates for 2001, 2011 and Joint.
+*output*: Estimates table and also plots.
 

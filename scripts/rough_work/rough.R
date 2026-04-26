@@ -378,5 +378,15 @@ matrix(c(0.5, 0, 0, 0.33), nrow = 2) %*%
 
 
 
+a <- tibble(
+  HOH = c(TRUE, FALSE),
+  HOH_cond = c(
+    expr("relate%in% c(1, 2, 3)"),
+    expr("relate%in% c(1:6)")
+  )
+)
 
+a |> expand_grid(EM = c(TRUE, FALSE))
+a$HOH_cond[[1]]
 
+df_f |> filter(a$HOH_cond[1])

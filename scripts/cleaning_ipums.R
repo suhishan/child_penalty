@@ -13,186 +13,75 @@ library(stargazer)
 
 ip <- readRDS('transformed_data/ipums.Rds')
 
-## Separate the dataset by male and female ##
-
-ip_m <- subset(ip, SEX == 1)
-ip_f <- subset(ip, SEX == 2)
-
-
-## ------------------------------##
-
-
-## ---------- Choosing Variables ---------- ##
-
-## ----- Age ----- ##
-
-# Checking for discrepancies.
-sum(is.na(ip_f$AGE)) # No NAS.
-sum(is.na(ip_m$AGE)) # No NAS.
-
-age <- ip_f$AGE
-age_m <- ip_m$AGE
-
-## ----- Census Year ----- ##
-
-# Checking for discrepancies.
-sum(is.na(ip_f$YEAR)) # No NAS.
-sum(is.na(ip_m$YEAR)) # No NAS
-
-year <- ip_f$YEAR
-year_m <- ip_m$YEAR
-
-
-## ----- Date of Birth ----- ##
-
-dob <- year - age # women
-dob_m <- year_m - age_m # men
-
-# Checking for discrepancies.
-sum(is.na(dob))
-sum(is.na(dob_m))
-
-
-## ----- Person Number ----- ##
-
-# NOTE: Person Number reflects numbers *within* the household
-# Therefore, numbers can repeat. These are no unique identifiers.
-
-# Checking for discrepancies
-sum(is.na(ip_f$PERNUM))
-sum(is.na(ip_m$PERNUM))
-
-pernum <- ip_f$PERNUM
-pernum_m <- ip_m$PERNUM
-
-## ----- Person Weights i.e. Survey Weights ----- ##
-sum(is.na(ip_f$PERWT)); sum(is.na(ip_m$PERWT))
-
-perwt <- ip_f$PERWT
-perwt_m <- ip_m$PERWT
-
-# Checking the range of values
-
-hist(perwt, breaks = 20); hist(perwt_m, breaks = 20)
-
-## ---------- Relationship to household head ----------##
-
-relate <- ip_f$RELATE
-relate_m <- ip_m$RELATE
-
-## ----- Age of the Eldest Child ----- ##
-
-# NOTE: The child is linked to their father and mother via is the IPUMS family pointer
-
-
-# Because 99 represents no own child in the household.
-age_eldch <- ifelse(ip_f$ELDCH == 99, NA, ip_f$ELDCH)
-age_eldch_m <- ifelse(ip_m$ELDCH == 99, NA, ip_m$ELDCH)
-
-
-# Checking for discrepancies.
-sum(is.na(age_eldch)) # 1,555,050 NAs i.e. these women/girls did not have chidlren
-sum(is.na(age_eldch_m)) # 1,675,043 NAs i.e. these men/boys did not have children.
-
-
-
-## ----- Parents age at the first of their first child ----- ##
-# Age at first birth = Age - Age of the eldest child.
-
-age_fc <- age - age_eldch
-age_fc_m <- age_m - age_eldch_m
-
-## NOTE: Some of the age at first birth values are absolutely improbable.
-## We could call it measurement error.
-table(age_fc, useNA = "always")
-table(age_fc_m, useNA = "always")
-
-
-## ----- Calendar Year of first birth ----- ##
-
-year_fc <- year - age_eldch # Women
-year_fc_m <- year_m - age_eldch_m # Men
-
-# NOTE: The NA counts are consistent across age_fc, age_eldch, year_fc ( and also for men)
-
-## ----- Marriage and age at first marriage -----##
-
-table(ip_f$MARST, useNA = "always")
-table(ip_m$MARST, useNA = "always")
-
-ever_married <- ifelse(ip_f$MARST %in% c(1:4), ip_f$MARST, NA) # Have you ever married or not? (Married, Divorced, Widowed)
-age_fm <- ifelse(ip_f$AGEMARR == 99, NA, ip_f$AGEMARR) # Age at first marriage (Women), If haven't married: NA.
-
-ever_married_m <- ifelse(ip_m$MARST %in% c(1:4), ip_m$MARST, NA) # Have you ever married or not (Married, Divorced, Widowed)
-age_fm_m <- ifelse(ip_m$AGEMARR == 99, NA, ip_m$AGEMARR) # Age at first marriage (Men), If haven't married: NA.
-
-
-## ----- Work and Employment Variables ----- ##
-# NOTE: If a person is employed out of Not in Universe, Unemployed, Inactive and Missing,
-# then, the person is flagged employed.
-
-# Women
-employed <- ifelse(ip_f$EMPSTAT == 1, 1, 0)
-months_worked <- ifelse(ip_f$WRKMTHS %in% c(98, 99), NA, ip_f$WRKMTHS)
-
-# Men
-employed_m <- ifelse(ip_m$EMPSTAT == 1, 1, 0)
-months_worked_m <- ifelse(ip_m$WRKMTHS %in% c(98, 99), NA, ip_m$WRKMTHS)
-
-
-
-## ----- Education ----- ##
-
-# Checking for discrepancies.
-table(ip_f$EDATTAIN, useNA = "always")
-table(ip_m$EDATTAIN, useNA = "always")
-
-edu_levels <- ifelse(ip_f$EDATTAIN == 9, NA, ip_f$EDATTAIN)
-edu_levels_m <- ifelse(ip_m$EDATTAIN == 9, NA, ip_m$EDATTAIN)
-
-
-## ----- Ethnicty and Religion ----- ##
-
-# Checking for discrepancies.
-ip_f |> group_by(RELIGION) |> count() |> print(n = 100)
-ip_m |> group_by(RELIGION) |> count() |> print(n = 100)
-
-br_ch <- ifelse(ip_f$ETHNICNP %in% c(1, 2, 27), 1, 0 ) # Brahmin/Chhetri Indicator.
-hindu <- ifelse(ip_f$RELIGION == 3, 1, 0) # Hindu Indicator
-
-# Men
-br_ch_m <- ifelse(ip_m$ETHNICNP %in% c(1, 2, 27), 1, 0 ) # Brahmin/Chhetri Indicator.
-hindu_m <- ifelse(ip_m$RELIGION == 3, 1, 0) # Hindu Indicator
-
-
-## ---------- Location/Districts ---------- ##
-
-# 40 : Kaski and Manang Together
-# 43 : Myagdi and Mustang Together
-# 63 : Jumla and Kalikot Together
-district <- as.numeric(substring(as.character(ip_f$GEO2_NP), 8, 9))
-district_m <- as.numeric(substring(as.character(ip_m$GEO2_NP), 8, 9))
-
-## ---------- Urban/Rural ---------- ##
-urban <- ifelse(ip_f$URBAN == 2, 1, 0)
-urban_m <- ifelse(ip_m$URBAN == 2, 1, 0)
-
-## DataFrame vessel for all the required variables (female)
-# Women
-df_f <- data.frame(
-    age, year, dob, pernum, perwt, relate, ever_married, age_fm,
-    age_eldch, age_fc, year_fc, employed, months_worked, edu_levels, 
-    br_ch, hindu, district, urban,
-    bio_mom = ifelse(ip_f$STEPMOM == 0, 1, 0)
-)
-
-# Men
-df_m <- data.frame(
-    age_m, year_m, dob_m, pernum_m, perwt_m, relate_m, ever_married_m, age_fm_m,
-    age_eldch_m, age_fc_m, year_fc_m, employed_m, months_worked_m, edu_levels_m, 
-    br_ch_m, hindu_m, district_m, urban_m,
-    bio_dad = ifelse(ip_m$STEPPOP == 0, 1, 0)
-)
+## ----- Modularized function for selecting important variables.
+
+select_ipums <- function(original_ipums) {
+
+    ## ----- Sex Indicator ----- ##
+    sex <- ifelse(original_ipums$SEX == 2, 1, 0) # 1 is female
+
+    ## ----- Age & Year ----- ##
+    age <- original_ipums$AGE
+    year <- original_ipums$YEAR
+    dob <- year - age
+
+    ## ----- Person Number & Weights ----- ##
+    pernum <- original_ipums$PERNUM
+    perwt <- original_ipums$PERWT
+    # hist(perwt, breaks = 20) # Optional: uncomment for visual debugging
+
+    ## ----- Relationship & Family Pointers ----- ##
+
+    relate <- original_ipums$RELATE
+
+    # NOTE: ELDCH == 99 means no own child in the household
+    age_eldch <- ifelse(original_ipums$ELDCH == 99, NA, original_ipums$ELDCH)
+
+    ## ----- Age/Year at First Birth ----- ##
+    # Age at first birth = Age - Age of the eldest child
+    age_fc <- age - age_eldch
+    year_fc <- year - age_eldch
+
+    ## ----- Marriage ----- ##
+    # MARST %in% c(1:4) indicates ever married (Married, Divorced, Widowed, etc.)
+    ever_married <- ifelse(original_ipums$MARST %in% c(1:4), original_ipums$MARST, NA)
+    age_fm <- ifelse(original_ipums$AGEMARR == 99, NA, original_ipums$AGEMARR)
+
+    ## ----- Work and Employment ----- ##
+    # EMPSTAT == 1 indicates employed
+    employed <- ifelse(original_ipums$EMPSTAT == 1, 1, 0)
+    months_worked <- ifelse(original_ipums$WRKMTHS %in% c(98, 99), NA, original_ipums$WRKMTHS)
+
+    ## ----- Education ----- ##
+    # EDATTAIN == 9 indicates missing/NIU
+    edu_levels <- ifelse(original_ipums$EDATTAIN == 9, NA, original_ipums$EDATTAIN)
+
+    ## ----- Ethnicity & Religion ----- ##
+    br_ch <- ifelse(original_ipums$ETHNICNP %in% c(1, 2, 27), 1, 0) # Brahmin/Chhetri Indicator
+    hindu <- ifelse(original_ipums$RELIGION == 3, 1, 0) # Hindu Indicator
+
+    ## ----- Location & Urban/Rural ----- ##
+    district <- as.numeric(substring(as.character(original_ipums$GEO2_NP), 8, 9))
+    urban <- ifelse(original_ipums$URBAN == 2, 1, 0)
+
+    ## ----- Biological Parent Indicators ----- ##
+    bio_mom <- ifelse(original_ipums$STEPMOM == 0, 1, 0)
+    bio_dad <- ifelse(original_ipums$STEPPOP == 0, 1, 0)
+
+    ## ----- Combine into a single unified dataframe ----- ##
+    df <- data.frame(
+        sex, age, year, dob, pernum, perwt, relate,
+        ever_married, age_fm,
+        age_eldch, age_fc, year_fc,
+        employed, months_worked, edu_levels,
+        br_ch, hindu, district, urban,
+        bio_mom, bio_dad
+    )
+
+    return(df)
+}
+
+df <- select_ipums(ip)
 
 
 ## ---------- Filtering out the sample ---------- ##
@@ -201,29 +90,46 @@ df_m <- data.frame(
 # 2. Married, divorced or widowed.
 # 3. Biological Mothers only.
 
-df_use_f <- df_f |> filter(
- age %in% c(15:45) & !is.na(ever_married) &
-    (is.na(age_fc) | age_fc %in% c(20:45)) &  # if no child or if first child birthed between 20 and 49.
-    (is.na(age_eldch) | age_eldch %in% c(0:10)) 
-    & relate %in% c(1, 2, 3)
-    ## Only keep if head, spouse or child.
+
+
+filter_rules <- expand_grid(
+    relate_filter = c(TRUE,FALSE),
+    em_filter = c(TRUE, FALSE)
+) |> mutate(
+    relate_eval = ifelse(
+        relate_filter, "relate %in% c(1, 2, 3)", NA
+    ),
+    em_eval = ifelse(
+        em_filter, "ever_married %in% c(2, 3, 4)", NA
+    )
 )
 
-df_use_m <- df_m |> filter(
-    age_m %in% c(15:45) & !is.na(ever_married_m) &
-        (is.na(age_fc_m) | age_fc_m %in% c(20:45)) & # if no child or if first child birthed between 20 and 49.
-        (is.na(age_eldch_m) | age_eldch_m %in% c(0:10)) 
-        & relate_m %in% c(1, 2, 3)## Only keep if head, spouse or child.
-        
-)
 
+filter_specs <- function(df, rules) {
+    df <- df |> filter(
+        #---------- Default Rules for filtering. ----------#
+        age %in% c(15:45) & 
+        !is.na(ever_married) &
+        (is.na(age_fc) | age_fc %in% c(20:45)) &
+        (is.na(age_eldch) | age_eldch %in% c(0:10)) &
+        (is.na(edu_levels))
+    )
+        # ---------- Extra Rules ---------- #
+    lapply(seq_len(nrow(rules)), function(i){
+        r <- rules[i, ]
+        exprs <- c(r$relate_eval, r$em_eval)
+        exprs <- exprs[!is.na(exprs)]
 
-write_rds(df_use_f, "transformed_data/selected_f_ipums_use.Rds")
-write_rds(df_use_m, "transformed_data/selected_m_ipums_use.Rds")
+        if(length(exprs) == 0) return (df)
+        df |> filter(!!parse_expr(paste(exprs, collapse = " & ")))
 
+    })
+}
 
+big_df <- filter_specs(df, filter_rules)
 
 ## ---------- Summary table (sample sizes) ---------- ##
 
-table(df_use_f$year)
-table(df_use_m$year)
+lapply(big_df, function(i) {
+    with(i, table(year, sex))
+})

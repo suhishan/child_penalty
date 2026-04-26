@@ -9,23 +9,33 @@ format:
     page-layout: full
     fontsize: 1.1em
     mainfont: system-ui
+bibliography: references.bib
 ---
 
 # Introduction
 
+The goal of this blog is to present/replicate the Child Penalty estimates for Nepal from @kleven2025child. While the paper has a specific sample conditioning (which variables they condition their sample on) and matching (which variables they use to perform exact matching, I, ideally, want to show the results for many different permutations and combinations of sample and matching conditioning to see what differs and maybe think about why they differ. 
+
 
 ## Child Penalty Estimates (obtained with exact matching with inclusion of districts)
+
+### Estimates for 2001 A.D.
 ![](images/og/penalty_est_01.png)
 
+### Estimates for 2011 A.D.
 ![](images/og/penalty_est_11.png)
 
+### Estimates for the Joint Dataset.
 ![](images/og/penalty_est_join.png)
 
 
 ## Child Penalty Estimates (obtained with exact matching with exclusion of districts)
 
+### Estimates for 2001 A.D.
 ![](images/og/penalty_est_nodis_01.png)
 
+### Estimates for 2011 A.D.
 ![](images/og/penalty_est_nodis_11.png)
 
+### Estimates for the Joint Dataset.
 ![](images/og/penalty_est_join_nodis.png)

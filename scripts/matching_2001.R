@@ -15,12 +15,16 @@ add_district <- FALSE
 ## -------------------------------------------------- ##
 
 ## Load the cleaned and trimmed down sample
+
 df_use <- read_rds("transformed_data/selected_f_ipums_use.Rds")
 df_use_m <- read_rds("transformed_data/selected_m_ipums_use.Rds")
 
-# Have a variable on a) whether a person is childless and b) whether their eldest child was born in the interview year.
+# Have a variable on 
+# a) whether a person is childless and 
+# b) whether their eldest child was born in the interview year.
+
 df_use <- df_use |> mutate(
-    childless = ifelse(is.na(age_eldch), 1, 0), # If a person is childless in the sample i.e. no own child in the household.
+    childless = ifelse(is.na(age_eldch), 1, 0), # If a person is childless in the sample 
     child0 = ifelse(age_eldch == 0 & !is.na(age_eldch), 1, 0),
     parent_id = row_number() # If a person had a child in the given year.
 )
@@ -31,24 +35,33 @@ df_use_m <- df_use_m |> mutate(
     parent_id_m = row_number() # If a person had a child in the given year.
 )
 
-## Load only the 2011 sample and those with their eldest child <= 10 years old.
-df_use_01 <- df_use |> filter(year == 2001 & (is.na(age_eldch) | age_eldch <= 10))
-df_use_01_m <- df_use_m |> filter(year_m == 2001 & (is.na(age_eldch_m) | age_eldch_m <= 10)) # Men
+## Load only the 2001 sample and those with their eldest child <= 10 years old.
 
-# Matching:
+df_use_01 <- df_use |> filter(year == 2001)
+df_use_01_m <- df_use_m |> filter(year_m == 2001) # Men
+
+## ----------------------------------------------------------- ##
+## Get the dataframe ready for matching 
+## -------------------------------------------------- ##
+
 # Separate the datasets into year 0 parents and children.
 
-# Women
+# ----- Women ----- #
 # This is the group of 2011 birthers that is the basis of comparison.
 parents0 <- df_use_01 |> filter(child0 == 1) |> mutate(parent0_id = row_number())
+
 # This is the group that will be used as counterfactuals for negative event times.
 childless <- df_use_01 |> filter(childless == 1) |> mutate(childless_id = row_number())
 
-# Men
+
+# ----- Men ----- #
+
 # This is the group of 2011 birthers men that is going to be the basis of our comparison.
 parents0_m <- df_use_01_m |> filter(child0_m == 1) |> mutate(parent0_id_m = row_number())
 # This is the group that will be used as counterfactuals for negative event times. 
 childless_m <- df_use_01_m |> filter(childless_m == 1) |> mutate(childless_id_m = row_number())
+
+# ---------------------------------------------------------------------------------------#
 
 # For the parent dataset, for every parent, have their timeline from -1 to -5
 event_times <- -5:-1
@@ -74,6 +87,8 @@ match_parents_m <- parents0_m |>
     ) |> mutate(match_age_m = age_at_t_m) |> ungroup()
 
 match_childless_m <- childless_m |> mutate(match_age_m = age_m, treatment_m = 0)
+
+# ----- Join the childless and parents at 0 dataset. ----- #
 
 match_joined_df <- bind_rows(
     match_parents |> select(-age_at_t),

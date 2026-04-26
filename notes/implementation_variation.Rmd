@@ -1,0 +1,13 @@
+## Papers
+
+1. Specification Curve Analysis: Simonsohn et.al
+2. Multiverse Analysis (Steegen et.al)
+3. The garden of forking paths (Gelman and Loken)
+
+
+## Packages.
+
+1. specR
+2. multiverse
+
+
