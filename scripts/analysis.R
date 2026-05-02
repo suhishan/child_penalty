@@ -6,14 +6,6 @@ library(haven)
 library(patchwork)
 library(Matrix)
 
-## --------------------------------------------------##
-## Run all the cleaning and stuff beforehand for any changes ##
-## -------------------------------------------------- ##
-
-# source("scripts/cleaning_ipums.R")
-source("scripts/matching_2001.R")
-source("scripts/matching_2011.R")
-
 ## -------------------------------------------------- ##
 ## Load data (with districts used for matching)       ##
 ## -------------------------------------------------- ##
@@ -31,35 +23,15 @@ overall_df_11 <- overall_df_11 |>
   mutate(
     year = 2011, weights_total = weights * perwt
   )
+
+
 joined_df <- bind_rows(
   overall_df_01 ,
   overall_df_11
 )
 
 ## -------------------------------------------------- ##
-## Load data (with districts not used for matching)   ##
-## -------------------------------------------------- ##
 
-overall_df_nodis_01 <- read_rds(
-    "transformed_data/overall_df_for_analysis_2001_nodis.Rds"
-)
-overall_df_nodis_01 <- overall_df_nodis_01 |> 
-  mutate(
-    year = 2001, weights_total = weights * perwt
-  )
-
-overall_df_nodis_11 <- read_rds(
-    "transformed_data/overall_df_for_analysis_2011_nodis.Rds"
-)
-
-overall_df_nodis_11 <- overall_df_nodis_11 |> 
-  mutate(
-    year = 2011, weights_total = weights * perwt
-  )
-
-joined_df_nodis <- bind_rows(
-    overall_df_nodis_01, overall_df_nodis_11
-)
 
 ## -------------------------------------------------- ##
 ## A function that detrends the dependent variable.
@@ -90,13 +62,16 @@ joined_df_nodis <- bind_rows(
 
 
 calc_estimates <- function(dataframe) {
-
+  dataframe <- dataframe[!is.na(dataframe$t),]
   d_f <- dataframe[dataframe$sex == 1,]
   d_m <- dataframe[dataframe$sex == 2,]
 
   # ----- Detrend the dependent variable -----#
+  
   d_f <- detrend(d_f)
   d_m <- detrend(d_m)
+  
+  
 
   # ----- t as factor with reference level -2 ----- #
   d_f$t <- factor(d_f$t)
@@ -109,7 +84,7 @@ calc_estimates <- function(dataframe) {
   ## Women
   # Overall Model (with event time dummies)
   mf.1 <- feols(
-      employed_detrended ~ t | factor(age) +factor(year),
+      employed_detrended ~ t | factor(age) + factor(year),
       weights = d_f$weights_total,
       data = d_f,
       vcov = 'hetero'
@@ -185,16 +160,6 @@ calc_estimates <- function(dataframe) {
 ## -------------------------------------------------- ##
 
 
-## ----- Districts used in the matching -----##
-est_01 <- calc_estimates(overall_df_01)
-est_11 <- calc_estimates(overall_df_11)
-est_join <- calc_estimates(joined_df)
-
-## ----- Districts not used in matching ----- ##
-est_join_nodis <- calc_estimates(joined_df_nodis)
-est_nodis_01 <- calc_estimates(overall_df_nodis_01)
-est_nodis_11 <- calc_estimates(overall_df_nodis_11)
-
 
 ## -------------------------------------------------- ##
 ## Calculate the child penalty and its standard error.
@@ -247,7 +212,7 @@ calc_penalty <- function(estimates_list) { # model_f and model_m are model objec
 
 
 #TODO: Think about the title.
-  plot_coef <- function(estimates_list){
+plot_coef <- function(estimates_list){
     estimates <- estimates_list[[1]]
 
     plot_object <- estimates |> 
@@ -286,7 +251,7 @@ calc_penalty <- function(estimates_list) { # model_f and model_m are model objec
 
 }
 
-plot_penalty <- function(estimates_list, title) {
+plot_penalty <- function(estimates_list, title, filter_subtitle) {
     estimates <- estimates_list[[1]]
     penalty <- round(calc_penalty(estimates_list)[[1]], 4) * 100
     penalty_sd <- round(calc_penalty(estimates_list)[[2]], 4) * 100
@@ -316,7 +281,8 @@ plot_penalty <- function(estimates_list, title) {
     scale_x_continuous(breaks = unique(estimates$t))+
     labs(
       x = "Event time(t)", y = "Impact on Employment Rate", 
-      subtitle = "Estimates relative to event time t = -2",
+      subtitle = paste0("Estimates relative to event time t = -2\n", 
+      filter_subtitle),
       title = paste(title)
     )+
     theme_classic()+
@@ -328,11 +294,6 @@ plot_penalty <- function(estimates_list, title) {
 
 }
 
-
-calc_penalty(est_01)
-plot_penalty(est_11, "Penalty")
-
-
 ## ---------- Save Plots ---------- ##
 
 # Districts used to match people.
@@ -340,36 +301,3 @@ ggsave(
   "./blog/images/og/penalty_est_01.png", 
   plot_penalty(est_01, "Child Penalty Estimates for Census Year 2001"), 
   bg = "white", dpi = 300, units = "cm", height = 14, width = 20)
-
-ggsave(
-  "./blog/images/og/penalty_est_11.png", 
-  plot_penalty(est_11, "Child Penalty Estimates for Census Year 2011"), 
-  bg = "white", dpi = 300, units = "cm", height = 14, width = 20)
-
-
-ggsave(
-  "./blog/images/og/penalty_est_join.png",
-  plot_penalty(est_join, "Child Penalty Estimates (Overall)"), 
-  bg = "white", dpi = 300, units = "cm", height = 14, width = 20)
-
-# Districts not used to match people.
-
-ggsave(
-  "./blog/images/og/penalty_est_nodis_01.png",
-  plot_penalty(est_nodis_01, "Child Penalty Estimates 2001 (No District used for matching)"),
-  bg = "white", dpi = 300, units = "cm", height = 14, width = 20
-)
-
-
-ggsave(
-  "./blog/images/og/penalty_est_nodis_11.png",
-  plot_penalty(est_nodis_11, "Child Penalty Estimates 2011 (No District used for matching)"),
-  bg = "white", dpi = 300, units = "cm", height = 14, width = 20
-)
-
-
-ggsave(
-  "./blog/images/og/penalty_est_join_nodis.png",
-  plot_penalty(est_join_nodis, "Child Penalty Estimates Overall (No District used for matching)"),
-  bg = "white", dpi = 300, units = "cm", height = 14, width = 20
-)

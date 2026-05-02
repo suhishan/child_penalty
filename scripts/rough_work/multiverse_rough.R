@@ -70,7 +70,7 @@ rules_2 <- expand_grid(
 x <- function(df, rule){
   m_list <- lapply(seq_len(nrow(rule)),function(i) {
     vars <- as.character(
-      unlist(rule[i, 1:3])
+      unlist(rule[i, 1:ncol(rule)])
     )
     vars <- vars[!is.na(vars)]
 
@@ -87,3 +87,14 @@ x <- function(df, rule){
   return(m_list)
 
 }
+
+## List within a list.
+
+a <- c(1, 2, 3, 6)
+b <- c(2, 4)
+
+g <- lapply(a, function(i) {
+  lapply(b, function(j){
+    i * j
+  })
+})

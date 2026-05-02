@@ -19,10 +19,11 @@ rule <- expand_grid(
   var1 = c("district", NA)
 )
 
+df_use <- df[[1]]
 
-matching_func_01 <- function(df, rule){
-
-df_use <- df |> mutate(
+#matching_func_01 <- function(df, rule){
+          # REmember to change this to df
+df_use <- df_use |> mutate(
     childless = ifelse(is.na(age_eldch), 1, 0), # If a person is childless in the sample 
     child0 = ifelse(age_eldch == 0 & !is.na(age_eldch), 1, 0),
     parent_id = row_number() # If a person had a child in the given year.
@@ -73,7 +74,7 @@ match_joined_df <- bind_rows(
 ## Matching Algorithm/function ##
 ## -------------------------------------------------- ##
 
-district_list <- lapply(seq_len(nrow(rule)), function(i){
+#x <- lapply(seq_len(nrow(rule)), function(i){
 
   # ---------- Determine the matching formula using the matching variables provided.
 
@@ -81,22 +82,17 @@ district_list <- lapply(seq_len(nrow(rule)), function(i){
       unlist(rule[i, 1:ncol(rule)])
   )
   vars <- vars[!is.na(vars)]
-  vars <- rbind(vars, "match_age", "edu_levels", "urban", "ever_married")
+  vars <- rbind("district", "match_age", "edu_levels", "urban", "ever_married")
   my_formula <- reformulate(vars, response = "treatment")
 
   # ---------- The Usual Stuff now. ---------- #
-  sexes <- unique(df_use_01$sex)
-  model_list <- list()
-
-  # ---------- Traverse through both sexes. ---------- #
-
-  for (s in sexes) {
-    joined_s <- match_joined_df |> filter(sex == s)
-    df_s     <- df_use_01 |> filter(sex == s)
+  #for (s in sexes) {
+    joined_s <- match_joined_df |> filter(sex == 2)
+    df_s     <- df_use_01 |> filter(sex == 2)
 
     # Exact Matching (separate for each sex)
     m_exact <- matchit(
-      my_formula, 
+      formula = my_formula, 
       data = joined_s, method = "exact", normalize = FALSE
     )
     m_df <- match_data(m_exact)
@@ -117,25 +113,26 @@ district_list <- lapply(seq_len(nrow(rule)), function(i){
       control_neg |> select(age, year, sex, dob, employed, weights, subclass, t, parent_id, perwt),
       long_pos
     ) 
-
-    model_list[[s]] <- model_list[[s]] |> mutate(
-      weights_total = weights * perwt
-    )
-  }
+  #}
 
   bind_rows(model_list)
 
-})
-  
-  return (district_list)
-}
+#})
 
-## -------------------------------------------------- ##
-## Apply the forking big dataframe to forking matching 
-## -------------------------------------------------- ##
+x1 <- x[[1]]
+x1 <- x1 |> mutate(
+  weights_total = weights * perwt
+)
+x1 |> filter(sex == 2) |> 
+  group_by(t) |> summarize(
+  n(), sum(weights), sum(weights_total),
+  weighted.mean(employed, weights)
+)
 
-big_df <- read_rds("big_df.Rds")
+#return (district_list)
+#
 
-output <- lapply(big_df, function(i){
-  matching_func_01(i, rule) 
-})
+## ---------- Original Df Troubleshoot ---------- #
+
+df_use_01 |> filter(sex == 2) |> group_by(age) |> 
+  summarize(mean(employed)) |> print(n = 100)

@@ -14,28 +14,24 @@ bibliography: references.bib
 
 # Introduction
 
-The goal of this blog is to present/replicate the Child Penalty estimates for Nepal from @kleven2025child. While the paper has a specific sample conditioning (which variables they condition their sample on) and matching (which variables they use to perform exact matching, I, ideally, want to show the results for many different permutations and combinations of sample and matching conditioning to see what differs and maybe think about why they differ. 
+The goal of this blog is to present/replicate the Child Penalty estimates for Nepal from @kleven2025child. While the paper has a specific sample conditioning (which variables they condition their sample on) and matching (which variables they use to perform exact matching) I, ideally, want to show the results for many different permutations of sample and matching conditions to see what differs and maybe think about why they differ. 
+
+::: {#variation-plot}
+![](images/og/variation_plot.png)
+
+The following image shows 16 different child penalty estimates (and their 93% confidence intervals). The variation arise from difference in the sample as well as the matching procedures. *Relate* refers to the data being conditional on head of households, their spouse and their child; *Ever Married* refers to data conditional on only those adults who have married (and/or divorced); *District* refers to the use of a person's district of residence as a matching variable.
+
+These permuatations of conditions are additions on some default conditionings i.e. Ages between 15-45, Age of First Child between 20-45, Age of their eldest child <= 10 years old.
+
+:::
 
 
-## Child Penalty Estimates (obtained with exact matching with inclusion of districts)
-
-### Estimates for 2001 A.D.
-![](images/og/penalty_est_01.png)
-
-### Estimates for 2011 A.D.
-![](images/og/penalty_est_11.png)
-
-### Estimates for the Joint Dataset.
-![](images/og/penalty_est_join.png)
+## Some specific Plots.
 
 
-## Child Penalty Estimates (obtained with exact matching with exclusion of districts)
 
-### Estimates for 2001 A.D.
-![](images/og/penalty_est_nodis_01.png)
+::: {#First-Plot}
+![](images/og/penalty_est_11_red.png)
+:::
 
-### Estimates for 2011 A.D.
-![](images/og/penalty_est_nodis_11.png)
 
-### Estimates for the Joint Dataset.
-![](images/og/penalty_est_join_nodis.png)

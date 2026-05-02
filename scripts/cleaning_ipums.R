@@ -3,6 +3,8 @@ library(tidyverse)
 library(rethinking)
 library(haven)
 library(stargazer)
+library(rlang)
+
 
 ## ---------- Data ---------- ##
 
@@ -18,7 +20,7 @@ ip <- readRDS('transformed_data/ipums.Rds')
 select_ipums <- function(original_ipums) {
 
     ## ----- Sex Indicator ----- ##
-    sex <- ifelse(original_ipums$SEX == 2, 1, 0) # 1 is female
+    sex <- ifelse(original_ipums$SEX == 2, 1, 2) # 1 is female
 
     ## ----- Age & Year ----- ##
     age <- original_ipums$AGE
@@ -112,7 +114,7 @@ filter_specs <- function(df, rules) {
         !is.na(ever_married) &
         (is.na(age_fc) | age_fc %in% c(20:45)) &
         (is.na(age_eldch) | age_eldch %in% c(0:10)) &
-        (is.na(edu_levels))
+        (!is.na(edu_levels))
     )
         # ---------- Extra Rules ---------- #
     lapply(seq_len(nrow(rules)), function(i){
@@ -121,15 +123,20 @@ filter_specs <- function(df, rules) {
         exprs <- exprs[!is.na(exprs)]
 
         if(length(exprs) == 0) return (df)
-        df |> filter(!!parse_expr(paste(exprs, collapse = " & ")))
+        df |> filter(!!rlang::parse_expr(paste(exprs, collapse = " & ")))
 
     })
 }
 
 big_df <- filter_specs(df, filter_rules)
 
+write_rds(big_df, "big_df.Rds")
+
 ## ---------- Summary table (sample sizes) ---------- ##
 
 lapply(big_df, function(i) {
     with(i, table(year, sex))
 })
+
+
+## Trouble Shoot Space.
